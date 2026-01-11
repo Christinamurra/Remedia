@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../theme/remedia_theme.dart';
 import '../main.dart';
+import '../data/goals_data.dart';
+import '../models/user.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -12,6 +15,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  final Set<String> _selectedGoals = {};
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
@@ -31,6 +35,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  // Total pages = intro pages + goals page
+  int get _totalPages => _pages.length + 1;
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -43,10 +50,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _navigateToMainApp() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const MainScreen()),
+  Future<void> _saveGoalsAndNavigate() async {
+    // Save goals to Hive
+    final usersBox = Hive.box<User>('users');
+    final now = DateTime.now();
+
+    // Create or update user with goals
+    final existingUser = usersBox.get('current_user');
+    final user = existingUser?.copyWith(
+      goals: _selectedGoals.toList(),
+      updatedAt: now,
+    ) ?? User(
+      id: 'current_user',
+      email: '',
+      displayName: 'User',
+      createdAt: now,
+      updatedAt: now,
+      goals: _selectedGoals.toList(),
     );
+
+    await usersBox.put('current_user', user);
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    }
+  }
+
+  void _navigateToMainApp() {
+    _saveGoalsAndNavigate();
   }
 
   @override
@@ -60,15 +93,115 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: PageView.builder(
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
-                itemCount: _pages.length,
+                itemCount: _totalPages,
                 itemBuilder: (context, index) {
-                  return _buildPage(_pages[index]);
+                  if (index < _pages.length) {
+                    return _buildPage(_pages[index]);
+                  } else {
+                    return _buildGoalsPage();
+                  }
                 },
               ),
             ),
             _buildBottomSection(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGoalsPage() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        children: [
+          const SizedBox(height: 40),
+          Text(
+            'What are your goals?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              color: RemediaColors.textDark,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Select all that apply',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: RemediaColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: predefinedGoals.map((goal) {
+                  final isSelected = _selectedGoals.contains(goal.id);
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        if (isSelected) {
+                          _selectedGoals.remove(goal.id);
+                        } else {
+                          _selectedGoals.add(goal.id);
+                        }
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? RemediaColors.mutedGreen
+                            : RemediaColors.warmBeige,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? RemediaColors.mutedGreen
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            goal.icon,
+                            size: 20,
+                            color: isSelected
+                                ? Colors.white
+                                : RemediaColors.textDark,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            goal.label,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : RemediaColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -127,6 +260,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildBottomSection() {
+    final isLastPage = _currentPage == _totalPages - 1;
+    final buttonText = isLastPage ? 'Get Started' : 'Next';
+
     return Padding(
       padding: const EdgeInsets.all(40.0),
       child: Column(
@@ -134,7 +270,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              _pages.length,
+              _totalPages,
               (index) => _buildDot(index),
             ),
           ),
@@ -143,7 +279,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                if (_currentPage == _pages.length - 1) {
+                if (isLastPage) {
                   _navigateToMainApp();
                 } else {
                   _pageController.nextPage(
@@ -160,7 +296,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               child: Text(
-                _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
+                buttonText,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -169,9 +305,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
-          if (_currentPage < _pages.length - 1)
+          if (!isLastPage)
             TextButton(
-              onPressed: _navigateToMainApp,
+              onPressed: () {
+                // Skip to goals page
+                _pageController.animateToPage(
+                  _pages.length,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
               child: Text(
                 'Skip',
                 style: TextStyle(

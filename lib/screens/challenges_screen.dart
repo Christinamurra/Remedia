@@ -16,27 +16,225 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
   // Starts empty - users will check off days as they complete them
   final Map<int, Set<int>> _completedDaysPerChallenge = {};
 
-  void _toggleChallenge(int index) {
-    setState(() {
-      _challenges[index] = _challenges[index].copyWith(
-        isActive: !_challenges[index].isActive,
-        currentStreak: _challenges[index].isActive ? 0 : 1,
-        startDate: _challenges[index].isActive ? null : DateTime.now(),
-      );
-    });
-
+  void _toggleChallenge(int index) async {
     final challenge = _challenges[index];
+
+    // If starting a fasting challenge, show the time picker dialog
+    if (!challenge.isActive && challenge.type == ChallengeType.fasting) {
+      final result = await _showEatingWindowDialog(challenge);
+      if (result == null) return; // User cancelled
+
+      setState(() {
+        _challenges[index] = challenge.copyWith(
+          isActive: true,
+          currentStreak: 1,
+          startDate: DateTime.now(),
+          eatingWindowStart: result['start'],
+          eatingWindowEnd: result['end'],
+        );
+      });
+    } else {
+      setState(() {
+        _challenges[index] = challenge.copyWith(
+          isActive: !challenge.isActive,
+          currentStreak: challenge.isActive ? 0 : 1,
+          startDate: challenge.isActive ? null : DateTime.now(),
+        );
+      });
+    }
+
+    if (!mounted) return;
+
+    final updatedChallenge = _challenges[index];
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          challenge.isActive
-              ? '${challenge.title} started! Day 1 begins now.'
-              : '${challenge.title} paused.',
+          updatedChallenge.isActive
+              ? '${updatedChallenge.title} started! Day 1 begins now.'
+              : '${updatedChallenge.title} paused.',
         ),
         backgroundColor: RemediaColors.mutedGreen,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
+    );
+  }
+
+  Future<Map<String, int>?> _showEatingWindowDialog(Challenge challenge) async {
+    int startHour = challenge.eatingWindowStart ?? 12;
+    int endHour = challenge.eatingWindowEnd ?? 20;
+
+    return showDialog<Map<String, int>>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final eatingHours = endHour > startHour
+                ? endHour - startHour
+                : 24 - startHour + endHour;
+            final fastingHours = 24 - eatingHours;
+
+            return AlertDialog(
+              backgroundColor: RemediaColors.creamBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                'Set Your Eating Window',
+                style: TextStyle(
+                  color: RemediaColors.textDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Choose when you want to eat each day',
+                    style: TextStyle(
+                      color: RemediaColors.textMuted,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Start Eating',
+                              style: TextStyle(
+                                color: RemediaColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: RemediaColors.warmBeige,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButton<int>(
+                                value: startHour,
+                                underline: const SizedBox(),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                isExpanded: true,
+                                items: List.generate(24, (i) => i).map((hour) {
+                                  return DropdownMenuItem(
+                                    value: hour,
+                                    child: Text(Challenge.formatHour(hour)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setDialogState(() => startHour = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Stop Eating',
+                              style: TextStyle(
+                                color: RemediaColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: RemediaColors.warmBeige,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButton<int>(
+                                value: endHour,
+                                underline: const SizedBox(),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                isExpanded: true,
+                                items: List.generate(24, (i) => i).map((hour) {
+                                  return DropdownMenuItem(
+                                    value: hour,
+                                    child: Text(Challenge.formatHour(hour)),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setDialogState(() => endHour = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: RemediaColors.waterBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$fastingHours:$eatingHours',
+                          style: TextStyle(
+                            color: RemediaColors.waterBlue,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'fasting:eating',
+                          style: TextStyle(
+                            color: RemediaColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: RemediaColors.textMuted),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, {'start': startHour, 'end': endHour});
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: RemediaColors.mutedGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Start Challenge',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -88,19 +286,42 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
   }
 
   Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          'Challenges',
-          style: Theme.of(context).textTheme.headlineLarge,
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: RemediaColors.warmBeige,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.arrow_back,
+              color: RemediaColors.textDark,
+              size: 20,
+            ),
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Track your wellness journey',
-          style: TextStyle(
-            color: RemediaColors.textMuted,
-            fontSize: 14,
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Challenges',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Track your wellness journey',
+                style: TextStyle(
+                  color: RemediaColors.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -419,7 +640,9 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        challenge.subtitle,
+                        challenge.type == ChallengeType.fasting && challenge.isActive
+                            ? '${challenge.fastingHours}:${24 - challenge.fastingHours} fasting window'
+                            : challenge.subtitle,
                         style: TextStyle(
                           color: RemediaColors.textMuted,
                           fontSize: 13,
@@ -451,13 +674,90 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
           // Description
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              challenge.description,
-              style: TextStyle(
-                color: RemediaColors.textMuted,
-                fontSize: 14,
-                height: 1.5,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  challenge.description,
+                  style: TextStyle(
+                    color: RemediaColors.textMuted,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                // Show eating window for fasting challenges
+                if (challenge.type == ChallengeType.fasting && challenge.isActive) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: RemediaColors.waterBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          color: RemediaColors.waterBlue,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${challenge.fastingHours}:${24 - challenge.fastingHours} Fasting Window',
+                                style: TextStyle(
+                                  color: RemediaColors.waterBlue,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                challenge.eatingWindowDescription,
+                                style: TextStyle(
+                                  color: RemediaColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            final result = await _showEatingWindowDialog(challenge);
+                            if (result != null) {
+                              setState(() {
+                                _challenges[index] = challenge.copyWith(
+                                  eatingWindowStart: result['start'],
+                                  eatingWindowEnd: result['end'],
+                                );
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: RemediaColors.waterBlue.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Edit',
+                              style: TextStyle(
+                                color: RemediaColors.waterBlue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
 

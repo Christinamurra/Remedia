@@ -32,6 +32,9 @@ class User {
   @HiveField(8)
   final String? anonymousName; // Preserve anonymous identity if desired
 
+  @HiveField(9)
+  final List<String> goals; // User's selected health goals
+
   User({
     required this.id,
     required this.email,
@@ -42,6 +45,7 @@ class User {
     required this.updatedAt,
     this.isAnonymous = false,
     this.anonymousName,
+    this.goals = const [],
   });
 
   // Computed properties
@@ -70,6 +74,7 @@ class User {
     DateTime? updatedAt,
     bool? isAnonymous,
     String? anonymousName,
+    List<String>? goals,
   }) {
     return User(
       id: id ?? this.id,
@@ -81,6 +86,7 @@ class User {
       updatedAt: updatedAt ?? this.updatedAt,
       isAnonymous: isAnonymous ?? this.isAnonymous,
       anonymousName: anonymousName ?? this.anonymousName,
+      goals: goals ?? this.goals,
     );
   }
 
@@ -96,6 +102,7 @@ class User {
       'updatedAt': updatedAt.toIso8601String(),
       'isAnonymous': isAnonymous,
       'anonymousName': anonymousName,
+      'goals': goals,
     };
   }
 
@@ -110,6 +117,7 @@ class User {
       updatedAt: DateTime.parse(map['updatedAt'] as String),
       isAnonymous: map['isAnonymous'] as bool? ?? false,
       anonymousName: map['anonymousName'] as String?,
+      goals: List<String>.from(map['goals'] ?? []),
     );
   }
 
@@ -125,6 +133,7 @@ class User {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isAnonymous': isAnonymous,
       'anonymousName': anonymousName,
+      'goals': goals,
     };
   }
 
@@ -141,6 +150,7 @@ class User {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       isAnonymous: data['isAnonymous'] as bool? ?? false,
       anonymousName: data['anonymousName'] as String?,
+      goals: List<String>.from(data['goals'] ?? []),
     );
   }
 
@@ -155,6 +165,7 @@ class User {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       isAnonymous: data['isAnonymous'] as bool? ?? false,
       anonymousName: data['anonymousName'] as String?,
+      goals: List<String>.from(data['goals'] ?? []),
     );
   }
 

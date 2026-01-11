@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../theme/remedia_theme.dart';
 import '../models/challenge.dart';
+import '../models/user.dart';
+import '../data/goals_data.dart';
 import 'challenges_screen.dart';
 import 'quiz_screen.dart';
 
@@ -21,6 +24,23 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _mantraExpanded = false;
   bool _quickActionsExpanded = false;
+  List<String> _userGoals = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserGoals();
+  }
+
+  void _loadUserGoals() {
+    final usersBox = Hive.box<User>('users');
+    final user = usersBox.get('current_user');
+    if (user != null) {
+      setState(() {
+        _userGoals = user.goals;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +71,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildHeader(context),
                     const SizedBox(height: 20),
 
+                    // Your Goals section
+                    if (_userGoals.isNotEmpty) ...[
+                      _buildGoalsSection(context),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Craving SOS Button - prominent
                     _buildCravingSOS(context),
                     const SizedBox(height: 24),
 
                     // Today's Mantra - collapsible
                     _buildCollapsibleMantra(context),
-                    const SizedBox(height: 16),
-
-                    // Today's Progress - always visible (priority)
-                    _buildTodaysProgress(context),
                     const SizedBox(height: 16),
 
                     // Challenges Section - always visible (priority)
@@ -109,6 +131,76 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     ];
+  }
+
+  Widget _buildGoalsSection(BuildContext context) {
+    // Get goal details from predefined goals
+    final userGoalDetails = _userGoals
+        .map((goalId) => predefinedGoals.where((g) => g.id == goalId).firstOrNull)
+        .whereType<Goal>()
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Your Goals',
+            style: TextStyle(
+              color: RemediaColors.textDark,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: userGoalDetails.map((goal) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: RemediaColors.mutedGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      goal.icon,
+                      size: 16,
+                      color: RemediaColors.mutedGreen,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      goal.label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: RemediaColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -330,131 +422,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTodaysProgress(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Today's Progress",
-                style: TextStyle(
-                  color: RemediaColors.textDark,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: RemediaColors.terraCotta.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '7',
-                      style: TextStyle(
-                        color: RemediaColors.terraCotta,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text('🔥', style: TextStyle(fontSize: 16)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildProgressCircle(
-                icon: '💧',
-                progress: 0.5,
-                label: '4/8 cups',
-                color: RemediaColors.waterBlue,
-              ),
-              _buildProgressCircle(
-                icon: '🌙',
-                progress: 0.875,
-                label: '7h sleep',
-                color: RemediaColors.sleepBrown,
-              ),
-              _buildProgressCircle(
-                icon: '✓',
-                progress: 1.0,
-                label: 'Sugar free',
-                color: RemediaColors.successGreen,
-                isCheck: true,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressCircle({
-    required String icon,
-    required double progress,
-    required String label,
-    required Color color,
-    bool isCheck = false,
-  }) {
-    return Column(
-      children: [
-        SizedBox(
-          width: 70,
-          height: 70,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 70,
-                height: 70,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 5,
-                  backgroundColor: color.withValues(alpha: 0.2),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
-              ),
-              if (isCheck)
-                Icon(Icons.check, color: color, size: 28)
-              else
-                Text(icon, style: const TextStyle(fontSize: 24)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: RemediaColors.textMuted,
-            fontSize: 13,
-          ),
-        ),
-      ],
     );
   }
 

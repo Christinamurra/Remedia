@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:hive/hive.dart';
 import '../theme/remedia_theme.dart';
+import '../models/user.dart';
+import '../main.dart';
 import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -27,14 +30,27 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.forward();
 
-    // Navigate to onboarding after 2 seconds
+    // Navigate after 2 seconds
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-        );
+        _navigateToNextScreen();
       }
     });
+  }
+
+  void _navigateToNextScreen() {
+    // Check if user has completed onboarding (has goals set)
+    final usersBox = Hive.box<User>('users');
+    final user = usersBox.get('current_user');
+    final hasCompletedOnboarding = user != null && user.goals.isNotEmpty;
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => hasCompletedOnboarding
+            ? const MainScreen()
+            : const OnboardingScreen(),
+      ),
+    );
   }
 
   @override

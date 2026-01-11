@@ -13,6 +13,9 @@ class Challenge {
   final int currentStreak;
   final bool isActive;
   final DateTime? startDate;
+  // Fasting-specific fields (eating window)
+  final int? eatingWindowStart; // Hour (0-23), e.g., 12 for noon
+  final int? eatingWindowEnd;   // Hour (0-23), e.g., 20 for 8pm
 
   const Challenge({
     required this.id,
@@ -25,7 +28,33 @@ class Challenge {
     this.currentStreak = 0,
     this.isActive = false,
     this.startDate,
+    this.eatingWindowStart,
+    this.eatingWindowEnd,
   });
+
+  // Helper to get fasting hours
+  int get fastingHours {
+    if (eatingWindowStart == null || eatingWindowEnd == null) return 16;
+    final eatingHours = eatingWindowEnd! > eatingWindowStart!
+        ? eatingWindowEnd! - eatingWindowStart!
+        : 24 - eatingWindowStart! + eatingWindowEnd!;
+    return 24 - eatingHours;
+  }
+
+  // Helper to format time
+  static String formatHour(int hour) {
+    if (hour == 0) return '12am';
+    if (hour == 12) return '12pm';
+    if (hour < 12) return '${hour}am';
+    return '${hour - 12}pm';
+  }
+
+  String get eatingWindowDescription {
+    if (eatingWindowStart == null || eatingWindowEnd == null) {
+      return 'Eat between noon and 8pm';
+    }
+    return 'Eat between ${formatHour(eatingWindowStart!)} and ${formatHour(eatingWindowEnd!)}';
+  }
 
   int get totalDays {
     switch (duration) {
@@ -53,6 +82,8 @@ class Challenge {
     int? currentStreak,
     bool? isActive,
     DateTime? startDate,
+    int? eatingWindowStart,
+    int? eatingWindowEnd,
   }) {
     return Challenge(
       id: id ?? this.id,
@@ -65,6 +96,8 @@ class Challenge {
       currentStreak: currentStreak ?? this.currentStreak,
       isActive: isActive ?? this.isActive,
       startDate: startDate ?? this.startDate,
+      eatingWindowStart: eatingWindowStart ?? this.eatingWindowStart,
+      eatingWindowEnd: eatingWindowEnd ?? this.eatingWindowEnd,
     );
   }
 }
@@ -120,10 +153,12 @@ final List<Challenge> sampleChallenges = [
     id: '6',
     title: 'Intermittent Fasting',
     subtitle: '16:8 fasting window',
-    description: 'Give your digestive system a break with a 16-hour fasting window. Eat between noon and 8pm only.',
+    description: 'Give your digestive system a break with a customizable fasting window.',
     type: ChallengeType.fasting,
     duration: ChallengeDuration.fourteenDays,
     iconEmoji: '⏰',
+    eatingWindowStart: 12,
+    eatingWindowEnd: 20,
   ),
   const Challenge(
     id: '7',
