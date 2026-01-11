@@ -143,6 +143,55 @@ class MealPlanService {
     return _slotsBox.get(key);
   }
 
+  /// Log a meal as eaten with optional notes
+  /// Only allows logging for current week slots
+  Future<MealPlan> logMeal({
+    required DateTime date,
+    required MealType mealType,
+    String? notes,
+  }) async {
+    // Validate: only allow logging for current week
+    if (!isCurrentWeek(date)) {
+      throw Exception('Can only log meals for the current week');
+    }
+
+    final plan = await getMealPlanForWeek(date);
+    final slot = plan.getMealSlot(date, mealType);
+
+    if (slot == null) {
+      throw Exception('Meal slot not found');
+    }
+
+    if (slot.isEmpty) {
+      throw Exception('Cannot log an empty meal slot');
+    }
+
+    final updatedSlot = slot.logMeal(notes: notes);
+    final updatedPlan = plan.updateSlot(updatedSlot);
+
+    await saveMealPlan(updatedPlan);
+    return updatedPlan;
+  }
+
+  /// Unlog a meal (revert to planned state)
+  Future<MealPlan> unlogMeal({
+    required DateTime date,
+    required MealType mealType,
+  }) async {
+    final plan = await getMealPlanForWeek(date);
+    final slot = plan.getMealSlot(date, mealType);
+
+    if (slot == null) {
+      throw Exception('Meal slot not found');
+    }
+
+    final updatedSlot = slot.unlogMeal();
+    final updatedPlan = plan.updateSlot(updatedSlot);
+
+    await saveMealPlan(updatedPlan);
+    return updatedPlan;
+  }
+
   // ============================================================================
   // Preferences Operations
   // ============================================================================

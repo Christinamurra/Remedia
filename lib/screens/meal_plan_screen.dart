@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/remedia_theme.dart';
 import '../models/meal_plan.dart';
@@ -7,6 +8,9 @@ import '../widgets/week_selector.dart';
 import '../widgets/meal_slot_card.dart';
 import '../widgets/meal_plan_summary_card.dart';
 import '../widgets/recipe_browser_sheet.dart';
+import '../widgets/log_meal_dialog.dart';
+import '../widgets/meal_suggestion_card.dart';
+import '../widgets/meal_plan_slot_selector_sheet.dart';
 import '../models/recipe.dart';
 import 'recipe_detail_screen.dart';
 
@@ -22,11 +26,22 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
   MealPlan? _currentMealPlan;
   DateTime _selectedWeek = DateTime.now();
   bool _isLoading = true;
+  List<Recipe> _suggestedRecipes = [];
 
   @override
   void initState() {
     super.initState();
     _loadMealPlan();
+    _loadSuggestions();
+  }
+
+  void _loadSuggestions() {
+    // Get a shuffled list of recipes for suggestions
+    final allRecipes = List<Recipe>.from(sampleRecipes);
+    allRecipes.shuffle(Random());
+    setState(() {
+      _suggestedRecipes = allRecipes.take(6).toList();
+    });
   }
 
   Future<void> _loadMealPlan() async {
@@ -79,6 +94,115 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     } else {
       // Show recipe details when tapping filled slot
       await _showRecipeDetails(slot);
+    }
+  }
+
+  Future<void> _handleLogMeal(MealSlot slot) async {
+    // Find the recipe
+    final recipe = sampleRecipes.firstWhere(
+      (r) => r.id == slot.recipeId,
+      orElse: () => sampleRecipes.first,
+    );
+
+    // Show log dialog
+    final notes = await LogMealDialog.show(
+      context,
+      slot: slot,
+      recipe: recipe,
+    );
+
+    // null means cancelled
+    if (notes == null) return;
+
+    try {
+      final updatedPlan = await _service.logMeal(
+        date: slot.date,
+        mealType: slot.mealType,
+        notes: notes.isEmpty ? null : notes,
+      );
+
+      setState(() {
+        _currentMealPlan = updatedPlan;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Text('${slot.mealType.displayName} logged!'),
+              ],
+            ),
+            backgroundColor: RemediaColors.mutedGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error logging meal: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSuggestionTap(Recipe recipe) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MealPlanSlotSelectorSheet(
+        recipe: recipe,
+        onSlotSelected: (slot) => _addSuggestionToSlot(recipe, slot),
+      ),
+    );
+  }
+
+  Future<void> _addSuggestionToSlot(Recipe recipe, MealSlot slot) async {
+    try {
+      final updatedPlan = await _service.addRecipeToSlot(
+        date: slot.date,
+        mealType: slot.mealType,
+        recipeId: recipe.id,
+        servings: 1,
+      );
+
+      setState(() {
+        _currentMealPlan = updatedPlan;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${recipe.title} added to ${slot.mealType.displayName}!'),
+            backgroundColor: RemediaColors.mutedGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding recipe: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -368,6 +492,73 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     );
   }
 
+  Widget _buildSuggestionsSection() {
+    if (_suggestedRecipes.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Suggested for You',
+                style: TextStyle(
+                  color: RemediaColors.textDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              GestureDetector(
+                onTap: _loadSuggestions,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.refresh_rounded,
+                      size: 16,
+                      color: RemediaColors.mutedGreen,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Refresh',
+                      style: TextStyle(
+                        color: RemediaColors.mutedGreen,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Horizontal scroll of suggestion cards
+        SizedBox(
+          height: 195,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _suggestedRecipes.length,
+            itemBuilder: (context, index) {
+              final recipe = _suggestedRecipes[index];
+              return MealSuggestionCard(
+                recipe: recipe,
+                onTap: () => _handleSuggestionTap(recipe),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
   Widget _buildMealPlanContent() {
     if (_currentMealPlan == null) return const SizedBox();
 
@@ -375,10 +566,16 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     final weekDates = plan.weekDates;
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 0),
       children: [
+        // Suggestions Section
+        _buildSuggestionsSection(),
+
         // Summary Card
-        MealPlanSummaryCard(mealPlan: plan),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: MealPlanSummaryCard(mealPlan: plan),
+        ),
 
         const SizedBox(height: 24),
 
@@ -387,60 +584,69 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
           final slots = plan.getMealSlotsForDate(date);
           final isToday = _isToday(date);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Day Header
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12, top: 8),
-                child: Row(
-                  children: [
-                    Text(
-                      _service.getDateWithDayString(date),
-                      style: TextStyle(
-                        color: RemediaColors.textDark,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Day Header
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12, top: 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        _service.getDateWithDayString(date),
+                        style: const TextStyle(
+                          color: RemediaColors.textDark,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    if (isToday) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: RemediaColors.mutedGreen,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Today',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                      if (isToday) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: RemediaColors.mutedGreen,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Today',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-
-              // Meal Slots for this day
-              ...slots.map((slot) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: MealSlotCard(
-                    slot: slot,
-                    onTap: () => _handleSlotTap(slot),
                   ),
-                );
-              }),
+                ),
 
-              const SizedBox(height: 12),
-            ],
+                // Meal Slots for this day
+                ...slots.map((slot) {
+                  final canLog = _service.isCurrentWeek(_selectedWeek) &&
+                      slot.isFilled &&
+                      !slot.isLogged;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: MealSlotCard(
+                      slot: slot,
+                      onTap: () => _handleSlotTap(slot),
+                      canLog: canLog,
+                      onLogTap: canLog ? () => _handleLogMeal(slot) : null,
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 12),
+              ],
+            ),
           );
         }),
 

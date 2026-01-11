@@ -38,6 +38,8 @@ class MealPlan {
   double get completionPercentage =>
       totalSlots > 0 ? (totalMealsPlanned / totalSlots) * 100 : 0.0;
 
+  int get totalMealsLogged => slots.where((slot) => slot.isLogged).length;
+
   // Helper methods
   List<MealSlot> getMealSlotsForDate(DateTime date) {
     final dateOnly = DateTime(date.year, date.month, date.day);

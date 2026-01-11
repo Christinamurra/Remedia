@@ -19,7 +19,12 @@ import 'models/meal_plan_preferences.dart';
 import 'models/scanned_product.dart';
 import 'models/user.dart';
 import 'models/friendship.dart';
+import 'models/login_streak.dart';
+import 'models/meal_log.dart';
+import 'models/community_post.dart';
+import 'models/comment.dart';
 import 'providers/scan_provider.dart';
+import 'providers/activity_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +46,10 @@ void main() async {
   Hive.registerAdapter(ScannedProductAdapter());
   Hive.registerAdapter(UserAdapter());
   Hive.registerAdapter(FriendshipAdapter());
+  Hive.registerAdapter(LoginStreakAdapter());
+  Hive.registerAdapter(MealLogAdapter());
+  Hive.registerAdapter(CommunityPostAdapter());
+  Hive.registerAdapter(CommentAdapter());
 
   // Open Hive boxes
   await Hive.openBox<MealPlan>('meal_plans');
@@ -49,11 +58,21 @@ void main() async {
   await Hive.openBox<ScannedProduct>('scanned_products');
   await Hive.openBox<User>('users');
   await Hive.openBox<Friendship>('friendships');
+  await Hive.openBox<LoginStreak>('login_streak');
+  await Hive.openBox<MealLog>('meal_logs');
+  await Hive.openBox<CommunityPost>('community_posts');
+  await Hive.openBox<Comment>('comments');
+
+  // Initialize activity provider and record login
+  final activityProvider = ActivityProvider();
+  await activityProvider.initialize();
+  await activityProvider.recordLogin();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ScanProvider()),
+        ChangeNotifierProvider.value(value: activityProvider),
       ],
       child: const RemediaApp(),
     ),

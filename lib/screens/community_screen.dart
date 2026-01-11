@@ -1,5 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../theme/remedia_theme.dart';
+import '../services/post_service.dart';
+import '../services/friend_service.dart';
+import '../models/community_post.dart';
+import '../widgets/comments_sheet.dart';
+import 'friends_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -10,7 +19,23 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   final TextEditingController _postController = TextEditingController();
-  final List<CommunityPost> _posts = samplePosts;
+  final PostService _postService = PostService();
+  final FriendService _friendService = FriendService();
+  final ImagePicker _imagePicker = ImagePicker();
+
+  List<CommunityPost> _posts = [];
+  bool _isLoading = true;
+  File? _selectedImage;
+  bool _isPosting = false;
+
+  // TODO: Replace with actual authenticated user ID
+  final String _currentUserId = 'current_user';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
 
   @override
   void dispose() {
@@ -18,34 +43,99 @@ class _CommunityScreenState extends State<CommunityScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: RemediaColors.creamBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+  Future<void> _loadPosts() async {
+    setState(() => _isLoading = true);
+
+    // Seed sample posts if empty (for demo)
+    await _postService.seedSamplePosts();
+
+    setState(() {
+      _posts = _postService.getFeed();
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: RemediaColors.creamBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
-              _buildHeader(),
-              const SizedBox(height: 24),
-
-              // Community Stats
-              _buildCommunityStats(),
-              const SizedBox(height: 24),
-
-              // Share Your Creation
-              _buildShareCreation(),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: RemediaColors.textLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               const SizedBox(height: 20),
-
-              // Made a Recipe Prompt
-              _buildMadeRecipePrompt(),
-              const SizedBox(height: 24),
-
-              // Community Feed
-              _buildCommunityFeed(),
+              Text(
+                'Add Photo',
+                style: TextStyle(
+                  color: RemediaColors.textDark,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildImageSourceOption(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Camera',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
+                    },
+                  ),
+                  _buildImageSourceOption(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Gallery',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -53,27 +143,236 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Sanctuary',
-          style: Theme.of(context).textTheme.headlineLarge,
+  Widget _buildImageSourceOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        decoration: BoxDecoration(
+          color: RemediaColors.cardSand,
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Welcome, Friend',
-          style: TextStyle(
-            color: RemediaColors.textMuted,
-            fontSize: 16,
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: RemediaColors.mutedGreen),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: RemediaColors.textDark,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removeSelectedImage() {
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
+  Future<String?> _saveImageLocally(File imageFile) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${directory.path}/post_images');
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+      final savedImage = await imageFile.copy('${imagesDir.path}/$fileName');
+      return savedImage.path;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _createPost() async {
+    if (_postController.text.trim().isEmpty && _selectedImage == null) return;
+
+    setState(() => _isPosting = true);
+
+    try {
+      String? imagePath;
+      if (_selectedImage != null) {
+        imagePath = await _saveImageLocally(_selectedImage!);
+      }
+
+      await _postService.createPost(
+        authorId: _currentUserId,
+        content: _postController.text.trim(),
+        imageUrl: imagePath,
+        isAnonymous: true,
+      );
+
+      _postController.clear();
+      setState(() {
+        _selectedImage = null;
+      });
+      await _loadPosts();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Posted anonymously!'),
+            backgroundColor: RemediaColors.mutedGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to create post'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isPosting = false);
+    }
+  }
+
+  Future<void> _toggleLike(CommunityPost post) async {
+    try {
+      await _postService.toggleLike(
+        postId: post.id,
+        userId: _currentUserId,
+      );
+      await _loadPosts();
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  void _openComments(CommunityPost post) {
+    CommentsSheet.show(
+      context,
+      post: post,
+      currentUserId: _currentUserId,
+      onCommentAdded: _loadPosts,
+    );
+  }
+
+  void _openFriendsScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FriendsScreen(currentUserId: _currentUserId),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: RemediaColors.creamBackground,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadPosts,
+          color: RemediaColors.mutedGreen,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 24),
+                _buildCommunityStats(),
+                const SizedBox(height: 24),
+                _buildShareCreation(),
+                const SizedBox(height: 20),
+                _buildMadeRecipePrompt(),
+                const SizedBox(height: 24),
+                _buildCommunityFeed(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your Sanctuary',
+              style: Theme.of(context).textTheme.headlineLarge,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Welcome, Friend',
+              style: TextStyle(
+                color: RemediaColors.textMuted,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            // Friends button
+            GestureDetector(
+              onTap: _openFriendsScreen,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: RemediaColors.cardSand,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Stack(
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      color: RemediaColors.textDark,
+                      size: 24,
+                    ),
+                    if (_friendService.getPendingRequestCount(_currentUserId) > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: RemediaColors.mutedGreen,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildCommunityStats() {
+    final totalMembers = '12.5K'; // Could be fetched from backend
+    final postsToday = _postService.getPostsTodayCount();
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -118,7 +417,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   child: Column(
                     children: [
                       Text(
-                        '12.5K',
+                        totalMembers,
                         style: TextStyle(
                           color: RemediaColors.textDark,
                           fontSize: 28,
@@ -147,7 +446,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   child: Column(
                     children: [
                       Text(
-                        '487',
+                        '$postsToday',
                         style: TextStyle(
                           color: RemediaColors.textDark,
                           fontSize: 28,
@@ -214,32 +513,86 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
             ),
           ),
+          // Selected image preview
+          if (_selectedImage != null) ...[
+            const SizedBox(height: 16),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.file(
+                    _selectedImage!,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: _removeSelectedImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: RemediaColors.textLight,
-                      style: BorderStyle.solid,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('📷', style: TextStyle(fontSize: 18)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Add Photo',
-                        style: TextStyle(
-                          color: RemediaColors.textMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
+                child: GestureDetector(
+                  onTap: _showImageSourceSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _selectedImage != null
+                            ? RemediaColors.mutedGreen
+                            : RemediaColors.textLight,
+                        style: BorderStyle.solid,
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                      color: _selectedImage != null
+                          ? RemediaColors.mutedGreen.withValues(alpha: 0.1)
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedImage != null
+                              ? Icons.check_circle
+                              : Icons.camera_alt_outlined,
+                          size: 20,
+                          color: _selectedImage != null
+                              ? RemediaColors.mutedGreen
+                              : RemediaColors.textMuted,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _selectedImage != null ? 'Photo Added' : 'Add Photo',
+                          style: TextStyle(
+                            color: _selectedImage != null
+                                ? RemediaColors.mutedGreen
+                                : RemediaColors.textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -258,31 +611,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                if (_postController.text.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Posted anonymously!'),
-                      backgroundColor: RemediaColors.mutedGreen,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                  _postController.clear();
-                }
-              },
+              onPressed: _isPosting ? null : _createPost,
               style: ElevatedButton.styleFrom(
                 backgroundColor: RemediaColors.warmBeige,
                 foregroundColor: RemediaColors.textDark,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
+                disabledBackgroundColor: RemediaColors.warmBeige.withValues(alpha: 0.5),
               ),
-              child: const Text(
-                'Post Anonymously',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              child: _isPosting
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: RemediaColors.textDark,
+                      ),
+                    )
+                  : const Text(
+                      'Post Anonymously',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
             ),
           ),
         ],
@@ -336,21 +685,76 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Community Feed',
-          style: TextStyle(
-            color: RemediaColors.textDark,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Community Feed',
+              style: TextStyle(
+                color: RemediaColors.textDark,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (_isLoading)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: RemediaColors.mutedGreen,
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
-        ..._posts.map((post) => _buildPostCard(post)),
+        if (_posts.isEmpty && !_isLoading)
+          _buildEmptyFeed()
+        else
+          ..._posts.map((post) => _buildPostCard(post)),
       ],
     );
   }
 
+  Widget _buildEmptyFeed() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: RemediaColors.cardSand,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.forum_outlined,
+            size: 48,
+            color: RemediaColors.textLight,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No posts yet',
+            style: TextStyle(
+              color: RemediaColors.textDark,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Be the first to share your journey!',
+            style: TextStyle(
+              color: RemediaColors.textMuted,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPostCard(CommunityPost post) {
+    final isLiked = post.isLikedBy(_currentUserId);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -428,32 +832,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
           const SizedBox(height: 16),
 
           // Content
-          Text(
-            post.content,
-            style: TextStyle(
-              color: RemediaColors.textDark,
-              fontSize: 15,
-              height: 1.5,
+          if (post.content.isNotEmpty)
+            Text(
+              post.content,
+              style: TextStyle(
+                color: RemediaColors.textDark,
+                fontSize: 15,
+                height: 1.5,
+              ),
             ),
-          ),
 
-          // Image placeholder if has image
+          // Image
           if (post.hasImage) ...[
             const SizedBox(height: 16),
-            Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: RemediaColors.warmBeige,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.image_rounded,
-                  size: 48,
-                  color: RemediaColors.textMuted,
-                ),
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _buildPostImage(post.imageUrl!),
             ),
           ],
 
@@ -462,9 +856,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
           // Actions
           Row(
             children: [
-              _buildActionButton(Icons.favorite_border, '${post.likes}'),
+              GestureDetector(
+                onTap: () => _toggleLike(post),
+                child: _buildActionButton(
+                  isLiked ? Icons.favorite : Icons.favorite_border,
+                  '${post.likesCount}',
+                  isActive: isLiked,
+                ),
+              ),
               const SizedBox(width: 20),
-              _buildActionButton(Icons.chat_bubble_outline, '${post.comments}'),
+              GestureDetector(
+                onTap: () => _openComments(post),
+                child: _buildActionButton(
+                  Icons.chat_bubble_outline,
+                  '${post.commentsCount}',
+                ),
+              ),
               const Spacer(),
               Icon(Icons.bookmark_border, color: RemediaColors.textMuted),
             ],
@@ -474,10 +881,74 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String count) {
+  Widget _buildPostImage(String imageUrl) {
+    // Check if it's a local file path
+    if (imageUrl.startsWith('/')) {
+      final file = File(imageUrl);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          height: 200,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+        );
+      }
+    }
+
+    // Handle placeholder or network images
+    if (imageUrl == 'placeholder') {
+      return _buildImagePlaceholder();
+    }
+
+    return Image.network(
+      imageUrl,
+      height: 200,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          height: 200,
+          color: RemediaColors.warmBeige,
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              color: RemediaColors.mutedGreen,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      color: RemediaColors.warmBeige,
+      child: Center(
+        child: Icon(
+          Icons.image_rounded,
+          size: 48,
+          color: RemediaColors.textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton(IconData icon, String count, {bool isActive = false}) {
     return Row(
       children: [
-        Icon(icon, color: RemediaColors.textMuted, size: 22),
+        Icon(
+          icon,
+          color: isActive ? Colors.red.shade400 : RemediaColors.textMuted,
+          size: 22,
+        ),
         const SizedBox(width: 4),
         Text(
           count,
@@ -490,67 +961,3 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 }
-
-class CommunityPost {
-  final String anonymousName;
-  final String avatar;
-  final String? badge;
-  final String timeAgo;
-  final String content;
-  final bool hasImage;
-  final int likes;
-  final int comments;
-
-  const CommunityPost({
-    required this.anonymousName,
-    required this.avatar,
-    this.badge,
-    required this.timeAgo,
-    required this.content,
-    this.hasImage = false,
-    required this.likes,
-    required this.comments,
-  });
-}
-
-final List<CommunityPost> samplePosts = [
-  const CommunityPost(
-    anonymousName: 'Anonymous Butterfly',
-    avatar: '🦋',
-    badge: '14-Day Champion',
-    timeAgo: '2h ago',
-    content: 'Day 14 of no sugar! I never thought I could do it. The cravings have finally stopped and I feel so much more energized. Thank you all for the support! 💚',
-    hasImage: false,
-    likes: 234,
-    comments: 45,
-  ),
-  const CommunityPost(
-    anonymousName: 'Gentle Sunrise',
-    avatar: '🌅',
-    badge: '7-Day Streak',
-    timeAgo: '4h ago',
-    content: 'Made my first sugar-free banana bread today! Used dates and mashed bananas for sweetness. My kids couldn\'t even tell the difference.',
-    hasImage: true,
-    likes: 189,
-    comments: 32,
-  ),
-  const CommunityPost(
-    anonymousName: 'Quiet Mountain',
-    avatar: '🏔️',
-    timeAgo: '6h ago',
-    content: 'Struggling today. Day 3 and the cravings are intense. Any tips for getting through the afternoon slump?',
-    hasImage: false,
-    likes: 156,
-    comments: 78,
-  ),
-  const CommunityPost(
-    anonymousName: 'Dancing Leaf',
-    avatar: '🍃',
-    badge: '30-Day Master',
-    timeAgo: '8h ago',
-    content: 'One month sugar-free! Here\'s what changed:\n\n• Better sleep\n• Clearer skin\n• More stable energy\n• No more brain fog\n\nIt\'s worth it, trust the process! 🌿',
-    hasImage: false,
-    likes: 412,
-    comments: 67,
-  ),
-];

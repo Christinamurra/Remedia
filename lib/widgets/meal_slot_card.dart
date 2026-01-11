@@ -6,11 +6,15 @@ import '../models/recipe.dart';
 class MealSlotCard extends StatelessWidget {
   final MealSlot slot;
   final VoidCallback onTap;
+  final VoidCallback? onLogTap;
+  final bool canLog;
 
   const MealSlotCard({
     super.key,
     required this.slot,
     required this.onTap,
+    this.onLogTap,
+    this.canLog = false,
   });
 
   Recipe? _getRecipe() {
@@ -28,20 +32,31 @@ class MealSlotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipe = _getRecipe();
+    final isLogged = slot.isLogged;
+
+    // Different colors based on state
+    Color backgroundColor;
+    Color borderColor;
+    if (recipe == null) {
+      backgroundColor = RemediaColors.cardSand;
+      borderColor = RemediaColors.warmBeige;
+    } else if (isLogged) {
+      backgroundColor = RemediaColors.mutedGreen.withValues(alpha: 0.2);
+      borderColor = RemediaColors.mutedGreen.withValues(alpha: 0.5);
+    } else {
+      backgroundColor = RemediaColors.cardLightGreen;
+      borderColor = RemediaColors.mutedGreen.withValues(alpha: 0.3);
+    }
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: recipe == null
-              ? RemediaColors.cardSand
-              : RemediaColors.cardLightGreen,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: recipe == null
-                ? RemediaColors.warmBeige
-                : RemediaColors.mutedGreen.withValues(alpha: 0.3),
+            color: borderColor,
             width: 1.5,
           ),
           boxShadow: [
@@ -118,23 +133,50 @@ class MealSlotCard extends StatelessWidget {
   Widget _buildFilledSlot(Recipe recipe) {
     final adjustedCalories = _getAdjustedCalories(recipe);
     final hasMultipleServings = slot.servings > 1;
+    final isLogged = slot.isLogged;
 
     return Row(
       children: [
-        // Meal Type Emoji
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: RemediaColors.mutedGreen.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Text(
-              slot.mealType.emoji,
-              style: const TextStyle(fontSize: 24),
+        // Meal Type Emoji with logged indicator
+        Stack(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isLogged
+                    ? RemediaColors.mutedGreen.withValues(alpha: 0.25)
+                    : RemediaColors.mutedGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  slot.mealType.emoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
             ),
-          ),
+            // Checkmark overlay if logged
+            if (isLogged)
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: RemediaColors.mutedGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 10,
+                  ),
+                ),
+              ),
+          ],
         ),
 
         const SizedBox(width: 12),
@@ -144,14 +186,36 @@ class MealSlotCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Meal Type Label
-              Text(
-                slot.mealType.displayName,
-                style: TextStyle(
-                  color: RemediaColors.mutedGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              // Meal Type Label with LOGGED badge
+              Row(
+                children: [
+                  Text(
+                    slot.mealType.displayName,
+                    style: const TextStyle(
+                      color: RemediaColors.mutedGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (isLogged) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: RemediaColors.mutedGreen,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'LOGGED',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
 
@@ -168,17 +232,17 @@ class MealSlotCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
-              // Metadata
+              // Metadata with notes indicator
               Row(
                 children: [
                   Text(
                     '$adjustedCalories cal',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: RemediaColors.textMuted,
                       fontSize: 12,
                     ),
                   ),
-                  Text(
+                  const Text(
                     ' • ',
                     style: TextStyle(
                       color: RemediaColors.textMuted,
@@ -187,13 +251,13 @@ class MealSlotCard extends StatelessWidget {
                   ),
                   Text(
                     '${recipe.prepTime} min',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: RemediaColors.textMuted,
                       fontSize: 12,
                     ),
                   ),
                   if (hasMultipleServings) ...[
-                    Text(
+                    const Text(
                       ' • ',
                       style: TextStyle(
                         color: RemediaColors.textMuted,
@@ -202,11 +266,26 @@ class MealSlotCard extends StatelessWidget {
                     ),
                     Text(
                       '${slot.servings} servings',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: RemediaColors.mutedGreen,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
+                    ),
+                  ],
+                  // Notes indicator
+                  if (slot.isLoggedWithNotes) ...[
+                    const Text(
+                      ' • ',
+                      style: TextStyle(
+                        color: RemediaColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.notes_rounded,
+                      size: 14,
+                      color: RemediaColors.textMuted,
                     ),
                   ],
                 ],
@@ -215,12 +294,29 @@ class MealSlotCard extends StatelessWidget {
           ),
         ),
 
-        // Checkmark Icon
-        Icon(
-          Icons.check_circle_rounded,
-          color: RemediaColors.mutedGreen,
-          size: 24,
-        ),
+        // Action area: Log button or checkmark
+        if (canLog && !isLogged)
+          GestureDetector(
+            onTap: onLogTap,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: RemediaColors.mutedGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.check_circle_outline_rounded,
+                color: RemediaColors.mutedGreen,
+                size: 24,
+              ),
+            ),
+          )
+        else
+          Icon(
+            isLogged ? Icons.check_circle_rounded : Icons.check_circle_rounded,
+            color: RemediaColors.mutedGreen,
+            size: 24,
+          ),
       ],
     );
   }

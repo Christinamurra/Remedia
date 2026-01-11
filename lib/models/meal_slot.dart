@@ -37,6 +37,15 @@ class MealSlot {
   @HiveField(6)
   final DateTime updatedAt;
 
+  @HiveField(7)
+  final bool isLogged;
+
+  @HiveField(8)
+  final String? logNotes;
+
+  @HiveField(9)
+  final DateTime? loggedAt;
+
   MealSlot({
     required this.id,
     required this.date,
@@ -45,11 +54,15 @@ class MealSlot {
     required this.servings,
     required this.createdAt,
     required this.updatedAt,
+    this.isLogged = false,
+    this.logNotes,
+    this.loggedAt,
   });
 
   // Derived properties
   bool get isEmpty => recipeId == null;
   bool get isFilled => recipeId != null;
+  bool get isLoggedWithNotes => isLogged && logNotes != null && logNotes!.isNotEmpty;
 
   // Create empty slot
   factory MealSlot.empty({
@@ -65,6 +78,9 @@ class MealSlot {
       servings: 1,
       createdAt: now,
       updatedAt: now,
+      isLogged: false,
+      logNotes: null,
+      loggedAt: null,
     );
   }
 
@@ -77,6 +93,9 @@ class MealSlot {
     int? servings,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isLogged,
+    String? logNotes,
+    DateTime? loggedAt,
   }) {
     return MealSlot(
       id: id ?? this.id,
@@ -86,15 +105,25 @@ class MealSlot {
       servings: servings ?? this.servings,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isLogged: isLogged ?? this.isLogged,
+      logNotes: logNotes ?? this.logNotes,
+      loggedAt: loggedAt ?? this.loggedAt,
     );
   }
 
   // Clear recipe from slot (make it empty)
   MealSlot clear() {
-    return copyWith(
+    return MealSlot(
+      id: id,
+      date: date,
+      mealType: mealType,
       recipeId: null,
       servings: 1,
+      createdAt: createdAt,
       updatedAt: DateTime.now(),
+      isLogged: false,
+      logNotes: null,
+      loggedAt: null,
     );
   }
 
@@ -115,6 +144,32 @@ class MealSlot {
     );
   }
 
+  // Log meal as eaten with optional notes
+  MealSlot logMeal({String? notes}) {
+    return copyWith(
+      isLogged: true,
+      logNotes: notes,
+      loggedAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  // Unlog meal (revert to planned state)
+  MealSlot unlogMeal() {
+    return MealSlot(
+      id: id,
+      date: date,
+      mealType: mealType,
+      recipeId: recipeId,
+      servings: servings,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+      isLogged: false,
+      logNotes: null,
+      loggedAt: null,
+    );
+  }
+
   // Serialization for Hive
   Map<String, dynamic> toMap() {
     return {
@@ -125,6 +180,9 @@ class MealSlot {
       'servings': servings,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'isLogged': isLogged,
+      'logNotes': logNotes,
+      'loggedAt': loggedAt?.toIso8601String(),
     };
   }
 
@@ -139,6 +197,11 @@ class MealSlot {
       servings: map['servings'] as int,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
+      isLogged: map['isLogged'] as bool? ?? false,
+      logNotes: map['logNotes'] as String?,
+      loggedAt: map['loggedAt'] != null
+          ? DateTime.parse(map['loggedAt'] as String)
+          : null,
     );
   }
 
