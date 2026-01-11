@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyD5aAU3irL7vZ4EHnYF16ghOr96dWc06RY',
+    apiKey: 'AIzaSyBbHa-ljNMgljpP2JUV93uwvSO0t_aaZQU',
     appId: '1:346325927506:android:d6c53bba18c2b6fc98418b',
     messagingSenderId: '346325927506',
     projectId: 'remedia-714aa',
@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'remedia-714aa.firebasestorage.app',
     measurementId: 'G-FHZRCD1S3B',
   );
+
 }
