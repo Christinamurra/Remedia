@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "346325927506",
+    "project_id": "remedia-714aa",
+    "storage_bucket": "remedia-714aa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:346325927506:android:d6c53bba18c2b6fc98418b",
+        "android_client_info": {
+          "package_name": "com.example.remedia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5aAU3irL7vZ4EHnYF16ghOr96dWc06RY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
