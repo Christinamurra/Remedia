@@ -11,10 +11,10 @@ class ChallengesScreen extends StatefulWidget {
 
 class _ChallengesScreenState extends State<ChallengesScreen> {
   final List<Challenge> _challenges = List.from(sampleChallenges);
-  DateTime _selectedMonth = DateTime.now();
 
-  // Sample completed days for demo
-  final Set<int> _completedDays = {1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26};
+  // Completed days per challenge (challenge index -> set of completed day numbers)
+  // Starts empty - users will check off days as they complete them
+  final Map<int, Set<int>> _completedDaysPerChallenge = {};
 
   void _toggleChallenge(int index) {
     setState(() {
@@ -56,10 +56,6 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
 
               // Active challenge summary
               _buildActiveSummary(),
-              const SizedBox(height: 24),
-
-              // Calendar
-              _buildCalendar(),
               const SizedBox(height: 24),
 
               // Add Challenge Dropdown Button
@@ -114,6 +110,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
   Widget _buildActiveSummary() {
     final activeCount = _challenges.where((c) => c.isActive).length;
     final totalStreak = _challenges.fold<int>(0, (sum, c) => sum + c.currentStreak);
+    final totalCompletedDays = _completedDaysPerChallenge.values
+        .fold<int>(0, (sum, days) => sum + days.length);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -149,7 +147,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
           ),
           Expanded(
             child: _buildStatItem(
-              '${_completedDays.length}',
+              '$totalCompletedDays',
               'Days\nCompleted',
               '✅',
             ),
@@ -191,179 +189,79 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
     );
   }
 
-  Widget _buildCalendar() {
-    final daysInMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-    final firstWeekday = firstDayOfMonth.weekday;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: RemediaColors.cardSand,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          // Month header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
-                  });
-                },
-                icon: Icon(Icons.chevron_left, color: RemediaColors.textDark),
-              ),
-              Text(
-                '${_getMonthName(_selectedMonth.month)} ${_selectedMonth.year}',
-                style: TextStyle(
-                  color: RemediaColors.textDark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
-                  });
-                },
-                icon: Icon(Icons.chevron_right, color: RemediaColors.textDark),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+  Widget _buildDayTracker(int challengeIndex, int totalDays) {
+    final completedDays = _completedDaysPerChallenge[challengeIndex] ?? {};
 
-          // Weekday headers
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day) {
-              return SizedBox(
-                width: 36,
-                child: Center(
-                  child: Text(
-                    day,
-                    style: TextStyle(
-                      color: RemediaColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-
-          // Calendar grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              childAspectRatio: 1,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemCount: 42,
-            itemBuilder: (context, index) {
-              final dayOffset = index - (firstWeekday - 1);
-              if (dayOffset < 1 || dayOffset > daysInMonth) {
-                return const SizedBox();
-              }
-
-              final isCompleted = _completedDays.contains(dayOffset);
-              final isToday = dayOffset == DateTime.now().day &&
-                  _selectedMonth.month == DateTime.now().month &&
-                  _selectedMonth.year == DateTime.now().year;
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (_completedDays.contains(dayOffset)) {
-                      _completedDays.remove(dayOffset);
-                    } else {
-                      _completedDays.add(dayOffset);
-                    }
-                  });
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isCompleted
-                        ? RemediaColors.mutedGreen
-                        : isToday
-                            ? RemediaColors.terraCotta.withValues(alpha: 0.2)
-                            : RemediaColors.warmBeige,
-                    borderRadius: BorderRadius.circular(10),
-                    border: isToday
-                        ? Border.all(color: RemediaColors.terraCotta, width: 2)
-                        : null,
-                  ),
-                  child: Center(
-                    child: isCompleted
-                        ? const Icon(Icons.check, color: Colors.white, size: 18)
-                        : Text(
-                            '$dayOffset',
-                            style: TextStyle(
-                              color: isToday
-                                  ? RemediaColors.terraCotta
-                                  : RemediaColors.textDark,
-                              fontSize: 14,
-                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                            ),
-                          ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem(RemediaColors.mutedGreen, 'Completed'),
-              const SizedBox(width: 20),
-              _buildLegendItem(RemediaColors.terraCotta, 'Today'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 6),
         Text(
-          label,
+          '30-Day Tracker',
           style: TextStyle(
             color: RemediaColors.textMuted,
             fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: List.generate(totalDays, (index) {
+            final dayNumber = index + 1;
+            final isCompleted = completedDays.contains(dayNumber);
+
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (!_completedDaysPerChallenge.containsKey(challengeIndex)) {
+                    _completedDaysPerChallenge[challengeIndex] = {};
+                  }
+                  if (isCompleted) {
+                    _completedDaysPerChallenge[challengeIndex]!.remove(dayNumber);
+                  } else {
+                    _completedDaysPerChallenge[challengeIndex]!.add(dayNumber);
+                  }
+                });
+              },
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isCompleted
+                      ? RemediaColors.mutedGreen
+                      : RemediaColors.warmBeige,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isCompleted
+                        ? RemediaColors.mutedGreen
+                        : RemediaColors.textMuted.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: isCompleted
+                      ? const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 16,
+                        )
+                      : Text(
+                          '$dayNumber',
+                          style: TextStyle(
+                            color: RemediaColors.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                ),
+              ),
+            );
+          }),
         ),
       ],
     );
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month - 1];
   }
 
   Widget _buildAddChallengeButton() {
@@ -602,6 +500,15 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
                   ),
                 ],
               ),
+            ),
+          ],
+
+          // Day tracker
+          if (challenge.isActive) ...[
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildDayTracker(index, challenge.totalDays),
             ),
           ],
 

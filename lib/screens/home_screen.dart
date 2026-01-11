@@ -20,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _mantraExpanded = false;
-  bool _feelingExpanded = false;
   bool _quickActionsExpanded = false;
 
   @override
@@ -66,10 +65,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // Challenges Section - always visible (priority)
                     _buildChallengesSection(context),
-                    const SizedBox(height: 16),
-
-                    // How are you feeling - collapsible
-                    _buildCollapsibleFeeling(context),
                     const SizedBox(height: 16),
 
                     // Quick Actions - collapsible
@@ -146,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Your Sanctuary',
+                  'Remedia',
                   style: TextStyle(
                     color: RemediaColors.textDark,
                     fontSize: 20,
@@ -252,20 +247,17 @@ class _HomeScreenState extends State<HomeScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              RemediaColors.terraCotta,
-              RemediaColors.warmRust,
-            ],
-          ),
+          color: Colors.white.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.8),
+            width: 2,
+          ),
           boxShadow: [
             BoxShadow(
-              color: RemediaColors.terraCotta.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -274,8 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  width: 1.5,
+                ),
               ),
               child: const Text('⚡', style: TextStyle(fontSize: 24)),
             ),
@@ -289,16 +285,31 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.3,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          offset: const Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Get instant support',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withValues(alpha: 0.95),
                       fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          offset: const Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -308,6 +319,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Icons.arrow_forward_ios_rounded,
               color: Colors.white,
               size: 18,
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  offset: const Offset(0, 1),
+                  blurRadius: 2,
+                ),
+              ],
             ),
           ],
         ),
@@ -563,53 +581,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCollapsibleFeeling(BuildContext context) {
-    return _buildCollapsibleSection(
-      title: 'How are you feeling?',
-      isExpanded: _feelingExpanded,
-      onTap: () => setState(() => _feelingExpanded = !_feelingExpanded),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildMoodButton('😊', 'Great'),
-          _buildMoodButton('😌', 'Good'),
-          _buildMoodButton('😐', 'Okay'),
-          _buildMoodButton('😔', 'Low'),
-          _buildMoodButton('😫', 'Hard'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMoodButton(String emoji, String label) {
-    return GestureDetector(
-      onTap: () {},
-      child: Column(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: RemediaColors.warmBeige.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(emoji, style: const TextStyle(fontSize: 24)),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: RemediaColors.textMuted,
-              fontSize: 11,
-            ),
-          ),
-        ],
       ),
     );
   }
