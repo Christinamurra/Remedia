@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Remedia needs photo library access to upload images to your posts.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Remedia needs camera access to take photos for your posts.</string>
 </dict>
 </plist>

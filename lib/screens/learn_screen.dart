@@ -61,6 +61,8 @@ class LearnScreen extends StatelessWidget {
         return '🌿';
       case ArticleCategory.nervousSystem:
         return '🧘';
+      case ArticleCategory.liverHealth:
+        return '🫀';
     }
   }
 
@@ -78,6 +80,9 @@ class LearnScreen extends StatelessWidget {
         break;
       case ArticleCategory.nervousSystem:
         categoryColor = RemediaColors.waterBlue;
+        break;
+      case ArticleCategory.liverHealth:
+        categoryColor = RemediaColors.terraCotta.withValues(alpha: 0.8);
         break;
     }
 
@@ -262,6 +267,8 @@ class ArticleDetailScreen extends StatelessWidget {
         return '🌿';
       case ArticleCategory.nervousSystem:
         return '🧘';
+      case ArticleCategory.liverHealth:
+        return '🫀';
     }
   }
 
@@ -275,6 +282,8 @@ class ArticleDetailScreen extends StatelessWidget {
         return RemediaColors.sageGreen;
       case ArticleCategory.nervousSystem:
         return RemediaColors.waterBlue;
+      case ArticleCategory.liverHealth:
+        return RemediaColors.terraCotta.withValues(alpha: 0.8);
     }
   }
 

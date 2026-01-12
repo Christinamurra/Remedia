@@ -133,18 +133,16 @@ class FriendService {
   // Query Operations
   // ============================================================================
 
-  /// Get all friends for a user (accepted friendships) - returns both sent and received
-  Future<List<Friendship>> getFriends(String userId) async {
+  /// Get all friendships involving a user (sent or received)
+  Future<List<Friendship>> _getAllUserFriendships(String userId) async {
     // Query where user is sender
     final sentQuery = await _friendshipsCollection
         .where('senderId', isEqualTo: userId)
-        .where('status', isEqualTo: 'accepted')
         .get();
 
     // Query where user is receiver
     final receivedQuery = await _friendshipsCollection
         .where('receiverId', isEqualTo: userId)
-        .where('status', isEqualTo: 'accepted')
         .get();
 
     final friendships = <Friendship>[];
@@ -158,34 +156,28 @@ class FriendService {
     return friendships;
   }
 
+  /// Get all friends for a user (accepted friendships)
+  Future<List<Friendship>> getFriends(String userId) async {
+    final all = await _getAllUserFriendships(userId);
+    return all.where((f) => f.isAccepted).toList();
+  }
+
   /// Get pending friend requests received by a user
   Future<List<Friendship>> getPendingRequests(String userId) async {
-    final snapshot = await _friendshipsCollection
-        .where('receiverId', isEqualTo: userId)
-        .where('status', isEqualTo: 'pending')
-        .get();
-
-    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
+    final all = await _getAllUserFriendships(userId);
+    return all.where((f) => f.isPending && f.receiverId == userId).toList();
   }
 
   /// Get pending friend requests sent by a user
   Future<List<Friendship>> getSentRequests(String userId) async {
-    final snapshot = await _friendshipsCollection
-        .where('senderId', isEqualTo: userId)
-        .where('status', isEqualTo: 'pending')
-        .get();
-
-    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
+    final all = await _getAllUserFriendships(userId);
+    return all.where((f) => f.isPending && f.senderId == userId).toList();
   }
 
   /// Get blocked users for a user
   Future<List<Friendship>> getBlockedUsers(String userId) async {
-    final snapshot = await _friendshipsCollection
-        .where('senderId', isEqualTo: userId)
-        .where('status', isEqualTo: 'blocked')
-        .get();
-
-    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
+    final all = await _getAllUserFriendships(userId);
+    return all.where((f) => f.isBlocked && f.senderId == userId).toList();
   }
 
   /// Check if two users are friends

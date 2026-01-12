@@ -62,10 +62,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen>
     // Seed sample community posts if empty
     await _communityService.seedSamplePosts();
 
+    final forYouPosts = await _mealPostService.getSocialFeed(_currentUserId);
+    final followingPosts = await _mealPostService.getFriendsFeed(_currentUserId);
+    final communityPosts = _communityService.getFeed();
+
     setState(() {
-      _forYouPosts = _mealPostService.getSocialFeed(_currentUserId);
-      _followingPosts = _mealPostService.getFriendsFeed(_currentUserId);
-      _communityPosts = _communityService.getFeed();
+      _forYouPosts = forYouPosts;
+      _followingPosts = followingPosts;
+      _communityPosts = communityPosts;
       _isLoading = false;
     });
   }

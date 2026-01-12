@@ -86,9 +86,9 @@ class MealPostService {
 
   /// Get social feed (For You - friends' posts + public posts from others)
   /// Posts are filtered by visibility: friends' posts (any visibility) + public posts from non-friends
-  List<MealPost> getSocialFeed(String currentUserId, {int limit = 50, int offset = 0}) {
+  Future<List<MealPost>> getSocialFeed(String currentUserId, {int limit = 50, int offset = 0}) async {
     // Get friend IDs
-    final friendIds = _getFriendIds(currentUserId);
+    final friendIds = await _getFriendIds(currentUserId);
     final friendIdSet = Set<String>.from(friendIds);
 
     // Get all posts, filter by visibility rules
@@ -115,8 +115,8 @@ class MealPostService {
   }
 
   /// Get following feed (friends only)
-  List<MealPost> getFriendsFeed(String currentUserId, {int limit = 50, int offset = 0}) {
-    final friendIds = _getFriendIds(currentUserId);
+  Future<List<MealPost>> getFriendsFeed(String currentUserId, {int limit = 50, int offset = 0}) async {
+    final friendIds = await _getFriendIds(currentUserId);
     final friendIdSet = Set<String>.from(friendIds);
 
     // Include user's own posts + friends' posts
@@ -133,20 +133,28 @@ class MealPostService {
 
   /// Get posts by a specific user (for profile view)
   /// Returns all posts if viewing own profile or if friend, only public posts otherwise
-  List<MealPost> getUserPosts(String userId, {String? viewerId, int limit = 50}) {
-    final userPosts = _posts.values.where((post) {
-      if (post.authorId != userId) return false;
+  Future<List<MealPost>> getUserPosts(String userId, {String? viewerId, int limit = 50}) async {
+    final List<MealPost> userPosts = [];
+    for (final post in _posts.values) {
+      if (post.authorId != userId) continue;
 
       // If no viewer specified or viewing own posts, show all
-      if (viewerId == null || viewerId == userId) return true;
+      if (viewerId == null || viewerId == userId) {
+        userPosts.add(post);
+        continue;
+      }
 
       // If viewer is a friend, show all posts
-      if (_friendService.areFriends(viewerId, userId)) return true;
+      if (await _friendService.areFriends(viewerId, userId)) {
+        userPosts.add(post);
+        continue;
+      }
 
       // Otherwise only show public posts
-      return post.isPublic;
-    }).toList();
-
+      if (post.isPublic) {
+        userPosts.add(post);
+      }
+    }
     userPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return userPosts.take(limit).toList();
   }
@@ -276,8 +284,8 @@ class MealPostService {
   // ============================================================================
 
   /// Get friend IDs for a user
-  List<String> _getFriendIds(String userId) {
-    final friendships = _friendService.getFriends(userId);
+  Future<List<String>> _getFriendIds(String userId) async {
+    final friendships = await _friendService.getFriends(userId);
     return friendships.map((f) => f.getOtherUserId(userId)).toList();
   }
 

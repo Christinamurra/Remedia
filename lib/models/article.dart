@@ -1,4 +1,4 @@
-enum ArticleCategory { gutHealth, bloodSugar, herbs, nervousSystem }
+enum ArticleCategory { gutHealth, bloodSugar, herbs, nervousSystem, liverHealth }
 
 class Article {
   final String id;
@@ -31,6 +31,8 @@ class Article {
         return 'Herbs & Botanicals';
       case ArticleCategory.nervousSystem:
         return 'Nervous System';
+      case ArticleCategory.liverHealth:
+        return 'Liver Health';
     }
   }
 }
@@ -216,5 +218,75 @@ Start each morning with warm water, fresh ginger, and lemon. This simple practic
     imageUrl: 'https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=400',
     readTime: 4,
     publishedDate: DateTime(2024, 3, 15),
+  ),
+  Article(
+    id: '6',
+    title: 'Why Your Liver Needs a Fat-Free Morning',
+    summary: 'Learn how your liver can get overburdened with fat, and why avoiding fats before noon supports your body\'s natural cleansing cycle.',
+    content: '''
+Your liver is your body's most important detoxification organ, working tirelessly to filter toxins, process nutrients, and keep you healthy. But modern diets are putting an enormous strain on this vital organ.
+
+**The Overburdened Liver**
+
+The liver is responsible for processing every fat molecule you consume. When you eat fats—even healthy ones—your liver must produce bile, break down the fat, and manage its distribution throughout the body. Over time, a diet high in fats can lead to:
+
+- Fatty liver buildup
+- Sluggish detoxification
+- Reduced bile production
+- Impaired nutrient processing
+- Fatigue and brain fog
+
+Research discussed by Dr. Michael Greger highlights how excess dietary fat accumulates in liver cells, interfering with the organ's ability to function optimally. Even in non-alcoholic fatty liver disease, the primary culprit is often dietary fat overwhelming the liver's processing capacity.
+
+**The Morning Cleansing Window**
+
+Your body operates on natural rhythms. According to Medical Medium and other holistic health perspectives, the hours before noon are when your body is in its most active cleansing and detoxification phase. During this time:
+
+- The liver is working to flush out toxins accumulated overnight
+- The body prioritizes elimination and cleansing
+- Digestive energy is focused on clearing, not processing heavy foods
+
+When you consume fats before 12pm, you interrupt this natural cleansing cycle. Instead of continuing its detox work, the liver must shift gears to process incoming fats—exactly when it should be resting and regenerating.
+
+**What Happens When You Eat Fat in the Morning**
+
+Eating eggs, bacon, butter, oils, or even healthy fats like avocado and nuts first thing in the morning:
+
+1. Forces the liver out of cleansing mode
+2. Requires bile production when the gallbladder isn't fully active
+3. Slows the elimination of overnight toxins
+4. Creates a backlog of processing work for your liver
+
+**A Liver-Friendly Morning Routine**
+
+To support your liver's natural rhythm:
+
+- **Start with lemon water** - Hydrates and gently supports liver function
+- **Eat fruit first** - Easy to digest, provides clean energy
+- **Focus on hydrating foods** - Cucumber, celery, melon
+- **Save fats for lunch or later** - Give your liver time to complete its morning work
+- **Consider celery juice** - A powerful liver cleanser when consumed on an empty stomach
+
+**Signs Your Liver May Be Overburdened**
+
+Watch for these signals that your liver needs support:
+
+- Morning fatigue despite adequate sleep
+- Difficulty digesting fatty foods
+- Skin issues or breakouts
+- Sluggish digestion
+- Brain fog, especially in the morning
+- Sensitivity to alcohol or medications
+
+**The Path Forward**
+
+You don't need to eliminate fats entirely—they're essential nutrients. The key is timing. By keeping your mornings fat-free and allowing your liver to complete its natural cleansing cycle, you give this hardworking organ the rest it needs.
+
+Try eating fat-free until noon for two weeks and notice how your energy, digestion, and mental clarity improve. Your liver will thank you.
+    ''',
+    category: ArticleCategory.liverHealth,
+    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
+    readTime: 6,
+    publishedDate: DateTime(2024, 4, 1),
   ),
 ];

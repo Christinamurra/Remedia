@@ -43,14 +43,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     setState(() => _isLoading = true);
 
     final user = _postService.getUser(widget.userId);
-    final posts = _postService.getUserPosts(
+    final posts = await _postService.getUserPosts(
       widget.userId,
       viewerId: widget.currentUserId,
     );
 
     FriendshipStatus? status;
     if (!_isOwnProfile) {
-      status = _friendService.getFriendshipStatus(
+      status = await _friendService.getFriendshipStatus(
         widget.currentUserId,
         widget.userId,
       );
