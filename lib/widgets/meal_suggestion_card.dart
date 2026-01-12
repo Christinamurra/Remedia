@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/remedia_theme.dart';
 import '../models/recipe.dart';
+import '../services/premium_service.dart';
+import 'premium_upgrade_dialog.dart';
 
 class MealSuggestionCard extends StatelessWidget {
   final Recipe recipe;
@@ -11,6 +13,11 @@ class MealSuggestionCard extends StatelessWidget {
     required this.recipe,
     required this.onTap,
   });
+
+  bool get _isLocked {
+    final premiumService = PremiumService();
+    return recipe.isPremium && !premiumService.hasFullAccess;
+  }
 
   String _getRecipeEmoji(RecipeCategory category) {
     switch (category) {
@@ -41,13 +48,26 @@ class MealSuggestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLocked = _isLocked;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: () async {
+        if (isLocked) {
+          await PremiumUpgradeDialog.show(
+            context,
+            featureName: recipe.title,
+          );
+          return;
+        }
+        onTap();
+      },
       child: Container(
         width: 150,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: RemediaColors.cardSand,
+          color: isLocked
+              ? RemediaColors.cardSand.withValues(alpha: 0.7)
+              : RemediaColors.cardSand,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -68,37 +88,48 @@ class MealSuggestionCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  Image.network(
-                    recipe.imageUrl,
-                    height: 100,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                  ColorFiltered(
+                    colorFilter: isLocked
+                        ? const ColorFilter.mode(
+                            Colors.grey,
+                            BlendMode.saturation,
+                          )
+                        : const ColorFilter.mode(
+                            Colors.transparent,
+                            BlendMode.dst,
+                          ),
+                    child: Image.network(
+                      recipe.imageUrl,
                       height: 100,
-                      color: RemediaColors.warmBeige,
-                      child: const Center(
-                        child: Icon(
-                          Icons.restaurant_rounded,
-                          color: RemediaColors.textMuted,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
                         height: 100,
                         color: RemediaColors.warmBeige,
                         child: const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              RemediaColors.mutedGreen,
-                            ),
+                          child: Icon(
+                            Icons.restaurant_rounded,
+                            color: RemediaColors.textMuted,
+                            size: 32,
                           ),
                         ),
-                      );
-                    },
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 100,
+                          color: RemediaColors.warmBeige,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                RemediaColors.mutedGreen,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   // Category badge
                   Positioned(
@@ -119,6 +150,58 @@ class MealSuggestionCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // PRO badge for premium recipes
+                  if (recipe.isPremium)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade700,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'PRO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Lock overlay for locked recipes
+                  if (isLocked)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade700,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.lock_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -132,8 +215,10 @@ class MealSuggestionCard extends StatelessWidget {
                   // Title
                   Text(
                     recipe.title,
-                    style: const TextStyle(
-                      color: RemediaColors.textDark,
+                    style: TextStyle(
+                      color: isLocked
+                          ? RemediaColors.textDark.withValues(alpha: 0.6)
+                          : RemediaColors.textDark,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       height: 1.2,
@@ -149,13 +234,17 @@ class MealSuggestionCard extends StatelessWidget {
                       Icon(
                         Icons.schedule_rounded,
                         size: 12,
-                        color: RemediaColors.textMuted,
+                        color: isLocked
+                            ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                            : RemediaColors.textMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${recipe.prepTime}m',
-                        style: const TextStyle(
-                          color: RemediaColors.textMuted,
+                        style: TextStyle(
+                          color: isLocked
+                              ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                              : RemediaColors.textMuted,
                           fontSize: 11,
                         ),
                       ),
@@ -163,27 +252,33 @@ class MealSuggestionCard extends StatelessWidget {
                       Icon(
                         Icons.local_fire_department_rounded,
                         size: 12,
-                        color: RemediaColors.textMuted,
+                        color: isLocked
+                            ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                            : RemediaColors.textMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${recipe.nutrition.calories}',
-                        style: const TextStyle(
-                          color: RemediaColors.textMuted,
+                        style: TextStyle(
+                          color: isLocked
+                              ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                              : RemediaColors.textMuted,
                           fontSize: 11,
                         ),
                       ),
                       const Spacer(),
-                      // Add button
+                      // Add button or lock
                       Container(
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: RemediaColors.mutedGreen,
+                          color: isLocked
+                              ? Colors.amber.shade700
+                              : RemediaColors.mutedGreen,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.add_rounded,
+                        child: Icon(
+                          isLocked ? Icons.lock_rounded : Icons.add_rounded,
                           color: Colors.white,
                           size: 16,
                         ),

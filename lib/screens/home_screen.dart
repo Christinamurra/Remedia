@@ -22,24 +22,110 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _mantraExpanded = false;
   bool _quickActionsExpanded = false;
   List<String> _userGoals = [];
+  int _streakCount = 0;
+
+  // Rotating daily motivational quotes
+  static const List<String> _dailyQuotes = [
+    "Small steps every day lead to big changes.",
+    "Your health is an investment, not an expense.",
+    "Progress, not perfection, is what matters.",
+    "Every healthy choice is a victory.",
+    "Nourish your body, calm your mind.",
+    "You are stronger than your cravings.",
+    "Today is a new opportunity to be your best self.",
+    "Consistency beats intensity every time.",
+    "Your future self will thank you.",
+    "Believe in your ability to change.",
+    "One day at a time, one choice at a time.",
+    "Your body deserves to be treated well.",
+    "Healing happens when you choose yourself.",
+    "Every moment is a chance to start fresh.",
+    "You are capable of amazing things.",
+    "Trust the process, embrace the journey.",
+    "Small victories add up to big transformations.",
+    "Your wellness journey is uniquely yours.",
+    "Be patient with yourself, growth takes time.",
+    "Each healthy choice builds momentum.",
+    "You have the power to feel better.",
+    "Celebrate every step forward.",
+    "Your commitment to health matters.",
+    "Today's effort shapes tomorrow's health.",
+    "Listen to your body, it knows what it needs.",
+    "Strength grows from consistent action.",
+    "You are worth the effort it takes to be healthy.",
+    "Every sunrise brings new possibilities.",
+    "Your health journey is a gift to yourself.",
+    "Keep going, you're doing great.",
+  ];
+
+  String get _todaysQuote {
+    // Use day of year to rotate through quotes
+    final now = DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
+    return _dailyQuotes[dayOfYear % _dailyQuotes.length];
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadUserGoals();
+    _loadUserData();
+    _updateStreak();
   }
 
-  void _loadUserGoals() {
+  void _loadUserData() {
     final usersBox = Hive.box<User>('users');
     final user = usersBox.get('current_user');
     if (user != null) {
       setState(() {
         _userGoals = user.goals;
+        _streakCount = user.streakCount;
       });
     }
+  }
+
+  void _updateStreak() {
+    final usersBox = Hive.box<User>('users');
+    final user = usersBox.get('current_user');
+    if (user == null) return;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastLogin = user.lastLoginDate;
+
+    int newStreak = user.streakCount;
+
+    if (lastLogin == null) {
+      // First login ever
+      newStreak = 1;
+    } else {
+      final lastLoginDay = DateTime(lastLogin.year, lastLogin.month, lastLogin.day);
+      final difference = today.difference(lastLoginDay).inDays;
+
+      if (difference == 0) {
+        // Already logged in today, keep current streak
+        return;
+      } else if (difference == 1) {
+        // Consecutive day, increment streak
+        newStreak = user.streakCount + 1;
+      } else {
+        // Streak broken, reset to 1
+        newStreak = 1;
+      }
+    }
+
+    // Update user with new streak
+    final updatedUser = user.copyWith(
+      streakCount: newStreak,
+      lastLoginDate: today,
+      updatedAt: now,
+    );
+    usersBox.put('current_user', updatedUser);
+
+    setState(() {
+      _streakCount = newStreak;
+    });
   }
 
   @override
@@ -79,10 +165,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // Craving SOS Button - prominent
                     _buildCravingSOS(context),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Today's Mantra - collapsible
-                    _buildCollapsibleMantra(context),
+                    // Today's Mantra
+                    _buildMantra(context),
                     const SizedBox(height: 16),
 
                     // Challenges Section - always visible (priority)
@@ -91,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // Quick Actions - collapsible
                     _buildCollapsibleQuickActions(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -251,28 +337,71 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          // Streak display
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: RemediaColors.terraCotta.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text(
+                  '$_streakCount',
+                  style: TextStyle(
+                    color: RemediaColors.terraCotta,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCollapsibleMantra(BuildContext context) {
-    return _buildCollapsibleSection(
-      title: "Today's Mantra",
-      isExpanded: _mantraExpanded,
-      onTap: () => setState(() => _mantraExpanded = !_mantraExpanded),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Text(
-          '"Your body wants steadiness more than sugar."',
-          style: TextStyle(
-            color: RemediaColors.textDark,
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
-            fontStyle: FontStyle.italic,
+  Widget _buildMantra(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Today's Mantra",
+            style: TextStyle(
+              color: RemediaColors.textDark,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '"$_todaysQuote"',
+            style: TextStyle(
+              color: RemediaColors.textDark,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -477,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 130,
+            height: 140,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: challenges.length,
@@ -501,9 +630,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        width: 150,
+        width: 140,
         margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: RemediaColors.mutedGreen.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
@@ -514,36 +643,35 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 challenge.iconEmoji,
-                style: const TextStyle(fontSize: 24),
+                style: const TextStyle(fontSize: 20),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               challenge.title,
               style: TextStyle(
                 color: RemediaColors.textDark,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const Spacer(),
             Text(
               '${challenge.totalDays} days',
               style: TextStyle(
                 color: RemediaColors.textMuted,
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
           ],

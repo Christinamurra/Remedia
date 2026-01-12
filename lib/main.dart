@@ -7,14 +7,11 @@ import 'firebase_options.dart';
 import 'theme/remedia_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/track_screen.dart';
-import 'screens/recipes_screen.dart';
+import 'screens/challenges_screen.dart';
 import 'screens/learn_screen.dart';
-import 'screens/community_screen.dart';
+import 'screens/social_feed_screen.dart';
 import 'screens/remedies_screen.dart';
-import 'screens/experts_screen.dart';
 import 'screens/meal_plan_screen.dart';
-import 'screens/scan_screen.dart';
 import 'models/meal_slot.dart';
 import 'models/meal_plan.dart';
 import 'models/meal_plan_preferences.dart';
@@ -25,8 +22,11 @@ import 'models/login_streak.dart';
 import 'models/meal_log.dart';
 import 'models/community_post.dart';
 import 'models/comment.dart';
+import 'models/meal_post.dart';
+import 'models/challenge_buddy.dart';
 import 'providers/scan_provider.dart';
 import 'providers/activity_provider.dart';
+import 'services/premium_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +57,11 @@ void main() async {
   Hive.registerAdapter(MealLogAdapter());
   Hive.registerAdapter(CommunityPostAdapter());
   Hive.registerAdapter(CommentAdapter());
+  Hive.registerAdapter(MealPostAdapter());
+  Hive.registerAdapter(MealPostVisibilityAdapter());
+  Hive.registerAdapter(ChallengeBuddyAdapter());
+  Hive.registerAdapter(BuddyStatusAdapter());
+  Hive.registerAdapter(BuddyMatchTypeAdapter());
 
   // Open Hive boxes
   await Hive.openBox<MealPlan>('meal_plans');
@@ -69,11 +74,17 @@ void main() async {
   await Hive.openBox<MealLog>('meal_logs');
   await Hive.openBox<CommunityPost>('community_posts');
   await Hive.openBox<Comment>('comments');
+  await Hive.openBox<MealPost>('meal_posts');
+  await Hive.openBox<ChallengeBuddy>('challenge_buddies');
 
   // Initialize activity provider and record login
   final activityProvider = ActivityProvider();
   await activityProvider.initialize();
   await activityProvider.recordLogin();
+
+  // Initialize premium service
+  final premiumService = PremiumService();
+  await premiumService.initialize();
 
   runApp(
     MultiProvider(
@@ -137,12 +148,10 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(onAskRemedia: _openRemediesChat),
-      const TrackScreen(),
-      const ScanScreen(),
-      const RecipesScreen(),
+      const ChallengesScreen(),
       const MealPlanScreen(),
       const LearnScreen(),
-      const CommunityScreen(),
+      const SocialFeedScreen(),
     ];
 
     return Scaffold(
@@ -179,31 +188,21 @@ class _MainScreenState extends State<MainScreen> {
               ),
               _buildNavItem(
                 index: 1,
-                icon: Icons.bar_chart_rounded,
-                label: 'Track',
+                icon: Icons.emoji_events_rounded,
+                label: 'Challenges',
               ),
               _buildNavItem(
                 index: 2,
-                icon: Icons.qr_code_scanner_rounded,
-                label: 'Scan',
-              ),
-              _buildNavItem(
-                index: 3,
-                icon: Icons.search_rounded,
-                label: 'Recipes',
-              ),
-              _buildNavItem(
-                index: 4,
                 icon: Icons.calendar_month_rounded,
                 label: 'Plan',
               ),
               _buildNavItem(
-                index: 5,
+                index: 3,
                 icon: Icons.menu_book_rounded,
                 label: 'Learn',
               ),
               _buildNavItem(
-                index: 6,
+                index: 4,
                 icon: Icons.people_rounded,
                 label: 'Community',
               ),

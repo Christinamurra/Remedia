@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import '../theme/remedia_theme.dart';
 import '../models/recipe.dart';
 import '../models/meal_slot.dart';
+import '../services/premium_service.dart';
+import 'premium_upgrade_dialog.dart';
 
 class RecipeBrowserSheet extends StatefulWidget {
-  final MealSlot slot;
-  final Function(Recipe) onRecipeSelected;
+  final MealSlot? slot;
+  final Function(Recipe)? onRecipeSelected;
+  final Function(Recipe)? onAddToPlan;
 
   const RecipeBrowserSheet({
     super.key,
-    required this.slot,
-    required this.onRecipeSelected,
+    this.slot,
+    this.onRecipeSelected,
+    this.onAddToPlan,
   });
 
   @override
@@ -85,7 +89,9 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Add ${widget.slot.mealType.displayName}',
+                            widget.slot != null
+                                ? 'Add ${widget.slot!.mealType.displayName}'
+                                : 'Browse Recipes',
                             style: const TextStyle(
                               color: RemediaColors.textDark,
                               fontSize: 22,
@@ -204,16 +210,37 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
   }
 
   Widget _buildRecipeCard(Recipe recipe) {
+    final premiumService = PremiumService();
+    final isLocked = recipe.isPremium && !premiumService.hasFullAccess;
+
     return GestureDetector(
-      onTap: () {
-        widget.onRecipeSelected(recipe);
+      onTap: () async {
+        if (isLocked) {
+          // Show upgrade dialog for premium recipes
+          final upgraded = await PremiumUpgradeDialog.show(
+            context,
+            featureName: recipe.title,
+          );
+          if (upgraded == true) {
+            setState(() {}); // Refresh to show unlocked state
+          }
+          return;
+        }
+
         Navigator.pop(context);
+        if (widget.slot != null && widget.onRecipeSelected != null) {
+          widget.onRecipeSelected!(recipe);
+        } else if (widget.onAddToPlan != null) {
+          widget.onAddToPlan!(recipe);
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: RemediaColors.cardSand,
+          color: isLocked
+              ? RemediaColors.cardSand.withValues(alpha: 0.7)
+              : RemediaColors.cardSand,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: RemediaColors.warmBeige,
@@ -223,19 +250,46 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
         child: Row(
           children: [
             // Recipe Icon
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: RemediaColors.cardLightGreen,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  _getRecipeEmoji(recipe.category),
-                  style: const TextStyle(fontSize: 28),
+            Stack(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: isLocked
+                        ? RemediaColors.cardLightGreen.withValues(alpha: 0.5)
+                        : RemediaColors.cardLightGreen,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getRecipeEmoji(recipe.category),
+                      style: TextStyle(
+                        fontSize: 28,
+                        color: isLocked ? Colors.black45 : null,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                if (isLocked)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade700,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+              ],
             ),
 
             const SizedBox(width: 16),
@@ -245,15 +299,43 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    recipe.title,
-                    style: const TextStyle(
-                      color: RemediaColors.textDark,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          recipe.title,
+                          style: TextStyle(
+                            color: isLocked
+                                ? RemediaColors.textDark.withValues(alpha: 0.6)
+                                : RemediaColors.textDark,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (recipe.isPremium)
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'PRO',
+                            style: TextStyle(
+                              color: Colors.amber.shade800,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Row(
@@ -261,13 +343,17 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
                       Icon(
                         Icons.local_fire_department_rounded,
                         size: 14,
-                        color: RemediaColors.textMuted,
+                        color: isLocked
+                            ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                            : RemediaColors.textMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${recipe.nutrition.calories} cal',
                         style: TextStyle(
-                          color: RemediaColors.textMuted,
+                          color: isLocked
+                              ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                              : RemediaColors.textMuted,
                           fontSize: 12,
                         ),
                       ),
@@ -275,13 +361,17 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
                       Icon(
                         Icons.timer_outlined,
                         size: 14,
-                        color: RemediaColors.textMuted,
+                        color: isLocked
+                            ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                            : RemediaColors.textMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${recipe.prepTime} min',
                         style: TextStyle(
-                          color: RemediaColors.textMuted,
+                          color: isLocked
+                              ? RemediaColors.textMuted.withValues(alpha: 0.5)
+                              : RemediaColors.textMuted,
                           fontSize: 12,
                         ),
                       ),
@@ -297,13 +387,17 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: RemediaColors.mutedGreen.withValues(alpha: 0.1),
+                          color: isLocked
+                              ? RemediaColors.mutedGreen.withValues(alpha: 0.05)
+                              : RemediaColors.mutedGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           tag,
                           style: TextStyle(
-                            color: RemediaColors.mutedGreen,
+                            color: isLocked
+                                ? RemediaColors.mutedGreen.withValues(alpha: 0.5)
+                                : RemediaColors.mutedGreen,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -317,16 +411,16 @@ class _RecipeBrowserSheetState extends State<RecipeBrowserSheet> {
 
             const SizedBox(width: 12),
 
-            // Add Button
+            // Add Button or Lock Button
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: RemediaColors.mutedGreen,
+                color: isLocked ? Colors.amber.shade700 : RemediaColors.mutedGreen,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.add_rounded,
+              child: Icon(
+                isLocked ? Icons.lock_rounded : Icons.add_rounded,
                 color: Colors.white,
                 size: 24,
               ),

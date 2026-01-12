@@ -218,6 +218,17 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
     );
   }
 
+  Future<void> _showBrowseAllRecipes() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RecipeBrowserSheet(
+        onAddToPlan: (recipe) => _handleSuggestionTap(recipe),
+      ),
+    );
+  }
+
   Future<void> _addRecipeToSlot(MealSlot slot, Recipe recipe) async {
     try {
       // Add recipe to meal plan
@@ -470,16 +481,7 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to Recipes tab
-                // Note: This will be handled by parent navigator
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Switch to Recipes tab to browse recipes!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
+              onPressed: _showBrowseAllRecipes,
               icon: const Icon(Icons.restaurant_menu_rounded),
               label: const Text('Browse Recipes'),
               style: ElevatedButton.styleFrom(
@@ -512,26 +514,52 @@ class _MealPlanScreenState extends State<MealPlanScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              GestureDetector(
-                onTap: _loadSuggestions,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.refresh_rounded,
-                      size: 16,
-                      color: RemediaColors.mutedGreen,
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: _showBrowseAllRecipes,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.restaurant_menu_rounded,
+                          size: 16,
+                          color: RemediaColors.mutedGreen,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Browse All',
+                          style: TextStyle(
+                            color: RemediaColors.mutedGreen,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Refresh',
-                      style: TextStyle(
-                        color: RemediaColors.mutedGreen,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: _loadSuggestions,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.refresh_rounded,
+                          size: 16,
+                          color: RemediaColors.mutedGreen,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Refresh',
+                          style: TextStyle(
+                            color: RemediaColors.mutedGreen,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),

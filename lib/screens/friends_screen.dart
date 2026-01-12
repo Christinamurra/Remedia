@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme/remedia_theme.dart';
 import '../services/friend_service.dart';
 import '../models/friendship.dart';
 import '../models/user.dart';
+import 'user_profile_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   final String currentUserId;
@@ -21,12 +24,18 @@ class _FriendsScreenState extends State<FriendsScreen>
   late TabController _tabController;
   final FriendService _friendService = FriendService();
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
 
   List<User> _friends = [];
+  List<Friendship> _friendships = [];
   List<Friendship> _pendingRequests = [];
   List<Friendship> _sentRequests = [];
+  Map<String, User> _requestUsers = {};
   List<User> _searchResults = [];
+  Map<String, FriendshipStatus?> _searchResultStatuses = {};
   bool _isSearching = false;
+  bool _isLoadingSearch = false;
+  bool _isLoadingData = true;
 
   @override
   void initState() {
@@ -39,33 +48,107 @@ class _FriendsScreenState extends State<FriendsScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  void _loadData() {
-    setState(() {
-      _friends = _friendService.getFriendUsers(widget.currentUserId);
-      _pendingRequests = _friendService.getPendingRequests(widget.currentUserId);
-      _sentRequests = _friendService.getSentRequests(widget.currentUserId);
-    });
+  Future<void> _loadData() async {
+    setState(() => _isLoadingData = true);
+
+    try {
+      final friends = await _friendService.getFriendUsers(widget.currentUserId);
+      final friendships = await _friendService.getFriends(widget.currentUserId);
+      final pendingRequests = await _friendService.getPendingRequests(widget.currentUserId);
+      final sentRequests = await _friendService.getSentRequests(widget.currentUserId);
+
+      // Load users for pending/sent requests
+      final requestUserIds = <String>{};
+      for (final req in pendingRequests) {
+        requestUserIds.add(req.senderId);
+      }
+      for (final req in sentRequests) {
+        requestUserIds.add(req.receiverId);
+      }
+      final requestUsers = await _friendService.getUsers(requestUserIds.toList());
+      final requestUsersMap = {for (final u in requestUsers) u.id: u};
+
+      if (mounted) {
+        setState(() {
+          _friends = friends;
+          _friendships = friendships;
+          _pendingRequests = pendingRequests;
+          _sentRequests = sentRequests;
+          _requestUsers = requestUsersMap;
+          _isLoadingData = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+      }
+    }
   }
 
   void _onSearch(String query) {
+    _debounce?.cancel();
+
     if (query.isEmpty) {
       setState(() {
         _searchResults = [];
         _isSearching = false;
+        _isLoadingSearch = false;
       });
       return;
     }
 
     setState(() {
       _isSearching = true;
-      _searchResults = _friendService.searchUsers(
+      _isLoadingSearch = true;
+    });
+
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    try {
+      final results = await _friendService.searchUsersFirestore(
         query,
         excludeUserId: widget.currentUserId,
       );
-    });
+
+      // Fetch friendship statuses for all results
+      final statuses = <String, FriendshipStatus?>{};
+      for (final user in results) {
+        statuses[user.id] = await _friendService.getFriendshipStatus(
+          widget.currentUserId,
+          user.id,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _searchResultStatuses = statuses;
+          _isLoadingSearch = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingSearch = false;
+          _searchResults = [];
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to search users. Please try again.'),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _sendFriendRequest(String receiverId) async {
@@ -238,6 +321,12 @@ class _FriendsScreenState extends State<FriendsScreen>
   }
 
   Widget _buildFriendsList() {
+    if (_isLoadingData) {
+      return Center(
+        child: CircularProgressIndicator(color: RemediaColors.mutedGreen),
+      );
+    }
+
     if (_friends.isEmpty) {
       return _buildEmptyState(
         icon: Icons.people_outline,
@@ -251,78 +340,112 @@ class _FriendsScreenState extends State<FriendsScreen>
       itemCount: _friends.length,
       itemBuilder: (context, index) {
         final friend = _friends[index];
-        final friendship = _friendService.getFriends(widget.currentUserId)
-            .firstWhere((f) =>
-              f.senderId == friend.id || f.receiverId == friend.id);
+        final friendship = _friendships.firstWhere(
+          (f) => f.senderId == friend.id || f.receiverId == friend.id,
+          orElse: () => _friendships.first,
+        );
 
         return _buildFriendCard(friend, friendship);
       },
     );
   }
 
-  Widget _buildFriendCard(User friend, Friendship friendship) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: RemediaColors.cardSand,
-        borderRadius: BorderRadius.circular(16),
+  void _openProfile(String userId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(
+          userId: userId,
+          currentUserId: widget.currentUserId,
+        ),
       ),
-      child: Row(
-        children: [
-          _buildAvatar(friend),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  friend.displayName,
-                  style: TextStyle(
-                    color: RemediaColors.textDark,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+    );
+  }
+
+  Widget _buildFriendCard(User friend, Friendship friendship) {
+    return GestureDetector(
+      onTap: () => _openProfile(friend.id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: RemediaColors.cardSand,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            _buildAvatar(friend),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    friend.displayName,
+                    style: TextStyle(
+                      color: RemediaColors.textDark,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (friend.bio != null && friend.bio!.isNotEmpty)
+                    Text(
+                      friend.bio!,
+                      style: TextStyle(
+                        color: RemediaColors.textMuted,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: RemediaColors.textMuted),
+              onSelected: (value) {
+                if (value == 'profile') {
+                  _openProfile(friend.id);
+                } else if (value == 'remove') {
+                  _removeFriend(friendship.id);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline, color: RemediaColors.textDark, size: 20),
+                      SizedBox(width: 8),
+                      Text('View profile'),
+                    ],
                   ),
                 ),
-                if (friend.bio != null && friend.bio!.isNotEmpty)
-                  Text(
-                    friend.bio!,
-                    style: TextStyle(
-                      color: RemediaColors.textMuted,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const PopupMenuItem(
+                  value: 'remove',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_remove, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Remove friend'),
+                    ],
                   ),
+                ),
               ],
             ),
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: RemediaColors.textMuted),
-            onSelected: (value) {
-              if (value == 'remove') {
-                _removeFriend(friendship.id);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'remove',
-                child: Row(
-                  children: [
-                    Icon(Icons.person_remove, color: Colors.red, size: 20),
-                    SizedBox(width: 8),
-                    Text('Remove friend'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildRequestsList() {
+    if (_isLoadingData) {
+      return Center(
+        child: CircularProgressIndicator(color: RemediaColors.mutedGreen),
+      );
+    }
+
     if (_pendingRequests.isEmpty && _sentRequests.isEmpty) {
       return _buildEmptyState(
         icon: Icons.mail_outline,
@@ -365,7 +488,7 @@ class _FriendsScreenState extends State<FriendsScreen>
 
   Widget _buildRequestCard(Friendship request, bool isReceived) {
     final otherUserId = isReceived ? request.senderId : request.receiverId;
-    final user = _friendService.getUser(otherUserId);
+    final user = _requestUsers[otherUserId];
 
     if (user == null) return const SizedBox.shrink();
 
@@ -481,6 +604,27 @@ class _FriendsScreenState extends State<FriendsScreen>
   }
 
   Widget _buildSearchResults() {
+    if (_isLoadingSearch) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: RemediaColors.mutedGreen,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Searching...',
+              style: TextStyle(
+                color: RemediaColors.textMuted,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_searchResults.isEmpty) {
       return _buildEmptyState(
         icon: Icons.search_off,
@@ -500,10 +644,7 @@ class _FriendsScreenState extends State<FriendsScreen>
   }
 
   Widget _buildSearchResultCard(User user) {
-    final status = _friendService.getFriendshipStatus(
-      widget.currentUserId,
-      user.id,
-    );
+    final status = _searchResultStatuses[user.id];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

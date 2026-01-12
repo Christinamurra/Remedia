@@ -62,6 +62,7 @@ class Recipe {
   final List<String> instructions;
   final NutritionInfo nutrition;
   final bool isFavorite;
+  final bool isPremium;
   final String? expertId;
   final String? expertNote;
   final String? tip; // optional chef tip
@@ -80,6 +81,7 @@ class Recipe {
     required this.instructions,
     required this.nutrition,
     this.isFavorite = false,
+    this.isPremium = false,
     this.expertId,
     this.expertNote,
     this.tip,
@@ -102,6 +104,7 @@ class Recipe {
     List<String>? instructions,
     NutritionInfo? nutrition,
     bool? isFavorite,
+    bool? isPremium,
     String? expertId,
     String? expertNote,
     String? tip,
@@ -120,6 +123,7 @@ class Recipe {
       instructions: instructions ?? this.instructions,
       nutrition: nutrition ?? this.nutrition,
       isFavorite: isFavorite ?? this.isFavorite,
+      isPremium: isPremium ?? this.isPremium,
       expertId: expertId ?? this.expertId,
       expertNote: expertNote ?? this.expertNote,
       tip: tip ?? this.tip,

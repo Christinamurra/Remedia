@@ -1,14 +1,13 @@
-import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/friendship.dart';
 import '../models/user.dart';
 
 class FriendService {
-  static const String _friendshipsBox = 'friendships';
-  static const String _usersBox = 'users';
-
-  // Get Hive boxes
-  Box<Friendship> get _friendships => Hive.box<Friendship>(_friendshipsBox);
-  Box<User> get _users => Hive.box<User>(_usersBox);
+  // Firestore collection references
+  final CollectionReference<Map<String, dynamic>> _friendshipsCollection =
+      FirebaseFirestore.instance.collection('friendships');
+  final CollectionReference<Map<String, dynamic>> _usersCollection =
+      FirebaseFirestore.instance.collection('users');
 
   // ============================================================================
   // Friend Request Operations
@@ -20,14 +19,15 @@ class FriendService {
     required String receiverId,
   }) async {
     // Check if friendship already exists
-    final existing = _findExistingFriendship(senderId, receiverId);
+    final existing = await _findExistingFriendship(senderId, receiverId);
     if (existing != null) {
       throw FriendshipException('Friend request already exists');
     }
 
     final now = DateTime.now();
+    final friendshipId = '${senderId}_$receiverId';
     final friendship = Friendship(
-      id: '${senderId}_$receiverId',
+      id: friendshipId,
       senderId: senderId,
       receiverId: receiverId,
       status: FriendshipStatus.pending,
@@ -35,17 +35,18 @@ class FriendService {
       updatedAt: now,
     );
 
-    await _friendships.put(friendship.id, friendship);
+    await _friendshipsCollection.doc(friendshipId).set(friendship.toFirestore());
     return friendship;
   }
 
   /// Accept a friend request
   Future<Friendship> acceptFriendRequest(String friendshipId) async {
-    final friendship = _friendships.get(friendshipId);
-    if (friendship == null) {
+    final doc = await _friendshipsCollection.doc(friendshipId).get();
+    if (!doc.exists) {
       throw FriendshipException('Friend request not found');
     }
 
+    final friendship = Friendship.fromFirestore(doc);
     if (!friendship.isPending) {
       throw FriendshipException('Friend request is not pending');
     }
@@ -55,17 +56,18 @@ class FriendService {
       updatedAt: DateTime.now(),
     );
 
-    await _friendships.put(friendshipId, updated);
+    await _friendshipsCollection.doc(friendshipId).update(updated.toFirestore());
     return updated;
   }
 
   /// Reject a friend request
   Future<Friendship> rejectFriendRequest(String friendshipId) async {
-    final friendship = _friendships.get(friendshipId);
-    if (friendship == null) {
+    final doc = await _friendshipsCollection.doc(friendshipId).get();
+    if (!doc.exists) {
       throw FriendshipException('Friend request not found');
     }
 
+    final friendship = Friendship.fromFirestore(doc);
     if (!friendship.isPending) {
       throw FriendshipException('Friend request is not pending');
     }
@@ -75,7 +77,7 @@ class FriendService {
       updatedAt: DateTime.now(),
     );
 
-    await _friendships.put(friendshipId, updated);
+    await _friendshipsCollection.doc(friendshipId).update(updated.toFirestore());
     return updated;
   }
 
@@ -84,7 +86,7 @@ class FriendService {
     required String blockerId,
     required String blockedUserId,
   }) async {
-    final existing = _findExistingFriendship(blockerId, blockedUserId);
+    final existing = await _findExistingFriendship(blockerId, blockedUserId);
     final now = DateTime.now();
 
     if (existing != null) {
@@ -93,19 +95,20 @@ class FriendService {
         status: FriendshipStatus.blocked,
         updatedAt: now,
       );
-      await _friendships.put(existing.id, updated);
+      await _friendshipsCollection.doc(existing.id).update(updated.toFirestore());
       return updated;
     } else {
       // Create new blocked friendship
+      final friendshipId = '${blockerId}_$blockedUserId';
       final friendship = Friendship(
-        id: '${blockerId}_$blockedUserId',
+        id: friendshipId,
         senderId: blockerId,
         receiverId: blockedUserId,
         status: FriendshipStatus.blocked,
         createdAt: now,
         updatedAt: now,
       );
-      await _friendships.put(friendship.id, friendship);
+      await _friendshipsCollection.doc(friendshipId).set(friendship.toFirestore());
       return friendship;
     }
   }
@@ -115,107 +118,155 @@ class FriendService {
     required String blockerId,
     required String blockedUserId,
   }) async {
-    final existing = _findExistingFriendship(blockerId, blockedUserId);
+    final existing = await _findExistingFriendship(blockerId, blockedUserId);
     if (existing != null && existing.isBlocked) {
-      await _friendships.delete(existing.id);
+      await _friendshipsCollection.doc(existing.id).delete();
     }
   }
 
   /// Remove a friend (unfriend)
   Future<void> removeFriend(String friendshipId) async {
-    await _friendships.delete(friendshipId);
+    await _friendshipsCollection.doc(friendshipId).delete();
   }
 
   // ============================================================================
   // Query Operations
   // ============================================================================
 
-  /// Get all friends for a user (accepted friendships)
-  List<Friendship> getFriends(String userId) {
-    return _friendships.values
-        .where((f) =>
-            f.isAccepted &&
-            (f.senderId == userId || f.receiverId == userId))
-        .toList();
+  /// Get all friends for a user (accepted friendships) - returns both sent and received
+  Future<List<Friendship>> getFriends(String userId) async {
+    // Query where user is sender
+    final sentQuery = await _friendshipsCollection
+        .where('senderId', isEqualTo: userId)
+        .where('status', isEqualTo: 'accepted')
+        .get();
+
+    // Query where user is receiver
+    final receivedQuery = await _friendshipsCollection
+        .where('receiverId', isEqualTo: userId)
+        .where('status', isEqualTo: 'accepted')
+        .get();
+
+    final friendships = <Friendship>[];
+    for (final doc in sentQuery.docs) {
+      friendships.add(Friendship.fromFirestore(doc));
+    }
+    for (final doc in receivedQuery.docs) {
+      friendships.add(Friendship.fromFirestore(doc));
+    }
+
+    return friendships;
   }
 
   /// Get pending friend requests received by a user
-  List<Friendship> getPendingRequests(String userId) {
-    return _friendships.values
-        .where((f) => f.isPending && f.receiverId == userId)
-        .toList();
+  Future<List<Friendship>> getPendingRequests(String userId) async {
+    final snapshot = await _friendshipsCollection
+        .where('receiverId', isEqualTo: userId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
   }
 
   /// Get pending friend requests sent by a user
-  List<Friendship> getSentRequests(String userId) {
-    return _friendships.values
-        .where((f) => f.isPending && f.senderId == userId)
-        .toList();
+  Future<List<Friendship>> getSentRequests(String userId) async {
+    final snapshot = await _friendshipsCollection
+        .where('senderId', isEqualTo: userId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+
+    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
   }
 
   /// Get blocked users for a user
-  List<Friendship> getBlockedUsers(String userId) {
-    return _friendships.values
-        .where((f) => f.isBlocked && f.senderId == userId)
-        .toList();
+  Future<List<Friendship>> getBlockedUsers(String userId) async {
+    final snapshot = await _friendshipsCollection
+        .where('senderId', isEqualTo: userId)
+        .where('status', isEqualTo: 'blocked')
+        .get();
+
+    return snapshot.docs.map((doc) => Friendship.fromFirestore(doc)).toList();
   }
 
   /// Check if two users are friends
-  bool areFriends(String userId1, String userId2) {
-    final friendship = _findExistingFriendship(userId1, userId2);
+  Future<bool> areFriends(String userId1, String userId2) async {
+    final friendship = await _findExistingFriendship(userId1, userId2);
     return friendship != null && friendship.isAccepted;
   }
 
   /// Check if a user is blocked
-  bool isBlocked(String blockerId, String blockedUserId) {
-    final friendship = _findExistingFriendship(blockerId, blockedUserId);
+  Future<bool> isBlocked(String blockerId, String blockedUserId) async {
+    final friendship = await _findExistingFriendship(blockerId, blockedUserId);
     return friendship != null && friendship.isBlocked;
   }
 
   /// Get friendship status between two users
-  FriendshipStatus? getFriendshipStatus(String userId1, String userId2) {
-    final friendship = _findExistingFriendship(userId1, userId2);
+  Future<FriendshipStatus?> getFriendshipStatus(String userId1, String userId2) async {
+    final friendship = await _findExistingFriendship(userId1, userId2);
     return friendship?.status;
   }
 
   /// Get a specific friendship by ID
-  Friendship? getFriendship(String friendshipId) {
-    return _friendships.get(friendshipId);
+  Future<Friendship?> getFriendship(String friendshipId) async {
+    final doc = await _friendshipsCollection.doc(friendshipId).get();
+    if (!doc.exists) return null;
+    return Friendship.fromFirestore(doc);
   }
 
   // ============================================================================
   // User Search Operations
   // ============================================================================
 
-  /// Search users by display name (for adding friends)
-  List<User> searchUsers(String query, {String? excludeUserId}) {
-    if (query.isEmpty) return [];
+  /// Search users from Firebase Firestore (for finding new friends)
+  Future<List<User>> searchUsersFirestore(String query, {String? excludeUserId}) async {
+    if (query.isEmpty || query.length < 2) return [];
 
-    final lowerQuery = query.toLowerCase();
-    return _users.values.where((user) {
-      if (excludeUserId != null && user.id == excludeUserId) return false;
-      return user.displayName.toLowerCase().contains(lowerQuery) ||
-          user.email.toLowerCase().contains(lowerQuery);
-    }).toList();
-  }
+    final queryLower = query.toLowerCase();
 
-  /// Get user by ID
-  User? getUser(String userId) {
-    return _users.get(userId);
-  }
+    // Query users where displayName starts with query (prefix search)
+    final snapshot = await _usersCollection
+        .orderBy('displayName')
+        .startAt([queryLower])
+        .endAt(['$queryLower\uf8ff'])
+        .limit(20)
+        .get();
 
-  /// Get multiple users by IDs
-  List<User> getUsers(List<String> userIds) {
-    return userIds
-        .map((id) => _users.get(id))
-        .where((user) => user != null)
-        .cast<User>()
+    return snapshot.docs
+        .map((doc) => User.fromFirestore(doc))
+        .where((user) => excludeUserId == null || user.id != excludeUserId)
         .toList();
   }
 
+  /// Get user by ID from Firestore
+  Future<User?> getUser(String userId) async {
+    final doc = await _usersCollection.doc(userId).get();
+    if (!doc.exists) return null;
+    return User.fromFirestore(doc);
+  }
+
+  /// Get multiple users by IDs from Firestore
+  Future<List<User>> getUsers(List<String> userIds) async {
+    if (userIds.isEmpty) return [];
+
+    // Firestore limits 'in' queries to 30 items
+    final users = <User>[];
+    for (var i = 0; i < userIds.length; i += 30) {
+      final batch = userIds.skip(i).take(30).toList();
+      final snapshot = await _usersCollection
+          .where(FieldPath.documentId, whereIn: batch)
+          .get();
+
+      for (final doc in snapshot.docs) {
+        users.add(User.fromFirestore(doc));
+      }
+    }
+
+    return users;
+  }
+
   /// Get friend users (resolved from friendships)
-  List<User> getFriendUsers(String userId) {
-    final friendships = getFriends(userId);
+  Future<List<User>> getFriendUsers(String userId) async {
+    final friendships = await getFriends(userId);
     final friendIds = friendships
         .map((f) => f.getOtherUserId(userId))
         .toList();
@@ -227,22 +278,34 @@ class FriendService {
   // ============================================================================
 
   /// Find existing friendship between two users (in either direction)
-  Friendship? _findExistingFriendship(String userId1, String userId2) {
-    // Check both directions: user1->user2 and user2->user1
+  Future<Friendship?> _findExistingFriendship(String userId1, String userId2) async {
+    // Check direction: user1->user2
     final key1 = '${userId1}_$userId2';
-    final key2 = '${userId2}_$userId1';
+    final doc1 = await _friendshipsCollection.doc(key1).get();
+    if (doc1.exists) {
+      return Friendship.fromFirestore(doc1);
+    }
 
-    return _friendships.get(key1) ?? _friendships.get(key2);
+    // Check direction: user2->user1
+    final key2 = '${userId2}_$userId1';
+    final doc2 = await _friendshipsCollection.doc(key2).get();
+    if (doc2.exists) {
+      return Friendship.fromFirestore(doc2);
+    }
+
+    return null;
   }
 
   /// Get friend count for a user
-  int getFriendCount(String userId) {
-    return getFriends(userId).length;
+  Future<int> getFriendCount(String userId) async {
+    final friends = await getFriends(userId);
+    return friends.length;
   }
 
   /// Get pending request count for a user
-  int getPendingRequestCount(String userId) {
-    return getPendingRequests(userId).length;
+  Future<int> getPendingRequestCount(String userId) async {
+    final requests = await getPendingRequests(userId);
+    return requests.length;
   }
 }
 

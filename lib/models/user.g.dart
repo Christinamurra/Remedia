@@ -27,13 +27,15 @@ class UserAdapter extends TypeAdapter<User> {
       isAnonymous: fields[7] as bool,
       anonymousName: fields[8] as String?,
       goals: (fields[9] as List).cast<String>(),
+      streakCount: fields[10] as int,
+      lastLoginDate: fields[11] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +55,11 @@ class UserAdapter extends TypeAdapter<User> {
       ..writeByte(8)
       ..write(obj.anonymousName)
       ..writeByte(9)
-      ..write(obj.goals);
+      ..write(obj.goals)
+      ..writeByte(10)
+      ..write(obj.streakCount)
+      ..writeByte(11)
+      ..write(obj.lastLoginDate);
   }
 
   @override

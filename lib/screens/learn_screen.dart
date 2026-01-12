@@ -51,6 +51,19 @@ class LearnScreen extends StatelessWidget {
     );
   }
 
+  String _getCategoryEmoji(ArticleCategory category) {
+    switch (category) {
+      case ArticleCategory.gutHealth:
+        return '🦠';
+      case ArticleCategory.bloodSugar:
+        return '🍎';
+      case ArticleCategory.herbs:
+        return '🌿';
+      case ArticleCategory.nervousSystem:
+        return '🧘';
+    }
+  }
+
   Widget _buildArticleCard(BuildContext context, Article article) {
     Color categoryColor;
     switch (article.category) {
@@ -85,22 +98,72 @@ class LearnScreen extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Image placeholder
+            // Category illustration
             Container(
               width: 100,
               height: 120,
               decoration: BoxDecoration(
-                color: RemediaColors.warmBeige,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    categoryColor.withValues(alpha: 0.15),
+                    categoryColor.withValues(alpha: 0.3),
+                  ],
+                ),
                 borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(20),
                 ),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.article_rounded,
-                  color: RemediaColors.textMuted,
-                  size: 32,
-                ),
+              child: Stack(
+                children: [
+                  // Decorative circles
+                  Positioned(
+                    top: -10,
+                    right: -10,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: categoryColor.withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 10,
+                    left: -5,
+                    child: Container(
+                      width: 25,
+                      height: 25,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: categoryColor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ),
+                  // Main emoji
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: categoryColor.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _getCategoryEmoji(article.category),
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -189,8 +252,36 @@ class ArticleDetailScreen extends StatelessWidget {
 
   const ArticleDetailScreen({super.key, required this.article});
 
+  String _getCategoryEmoji(ArticleCategory category) {
+    switch (category) {
+      case ArticleCategory.gutHealth:
+        return '🦠';
+      case ArticleCategory.bloodSugar:
+        return '🍎';
+      case ArticleCategory.herbs:
+        return '🌿';
+      case ArticleCategory.nervousSystem:
+        return '🧘';
+    }
+  }
+
+  Color _getCategoryColor(ArticleCategory category) {
+    switch (category) {
+      case ArticleCategory.gutHealth:
+        return RemediaColors.mutedGreen;
+      case ArticleCategory.bloodSugar:
+        return RemediaColors.terraCotta;
+      case ArticleCategory.herbs:
+        return RemediaColors.sageGreen;
+      case ArticleCategory.nervousSystem:
+        return RemediaColors.waterBlue;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final categoryColor = _getCategoryColor(article.category);
+
     return Scaffold(
       backgroundColor: RemediaColors.creamBackground,
       appBar: AppBar(
@@ -205,17 +296,81 @@ class ArticleDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header image placeholder
+            // Header illustration
             Container(
               height: 200,
               width: double.infinity,
-              color: RemediaColors.warmBeige,
-              child: Center(
-                child: Icon(
-                  Icons.image_rounded,
-                  size: 64,
-                  color: RemediaColors.textMuted,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    categoryColor.withValues(alpha: 0.15),
+                    categoryColor.withValues(alpha: 0.35),
+                  ],
                 ),
+              ),
+              child: Stack(
+                children: [
+                  // Decorative elements
+                  Positioned(
+                    top: -30,
+                    right: -20,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: categoryColor.withValues(alpha: 0.15),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 20,
+                    left: -30,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: categoryColor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 40,
+                    left: 40,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: categoryColor.withValues(alpha: 0.25),
+                      ),
+                    ),
+                  ),
+                  // Main emoji
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: categoryColor.withValues(alpha: 0.25),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _getCategoryEmoji(article.category),
+                        style: const TextStyle(fontSize: 56),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -240,13 +395,13 @@ class ArticleDetailScreen extends StatelessWidget {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: RemediaColors.mutedGreen.withValues(alpha: 0.15),
+                          color: categoryColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           article.categoryLabel,
                           style: TextStyle(
-                            color: RemediaColors.mutedGreen,
+                            color: categoryColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),

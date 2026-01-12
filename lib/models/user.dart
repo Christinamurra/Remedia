@@ -35,6 +35,12 @@ class User {
   @HiveField(9)
   final List<String> goals; // User's selected health goals
 
+  @HiveField(10)
+  final int streakCount; // Consecutive days logged in
+
+  @HiveField(11)
+  final DateTime? lastLoginDate; // Last date user opened the app
+
   User({
     required this.id,
     required this.email,
@@ -46,6 +52,8 @@ class User {
     this.isAnonymous = false,
     this.anonymousName,
     this.goals = const [],
+    this.streakCount = 0,
+    this.lastLoginDate,
   });
 
   // Computed properties
@@ -75,6 +83,8 @@ class User {
     bool? isAnonymous,
     String? anonymousName,
     List<String>? goals,
+    int? streakCount,
+    DateTime? lastLoginDate,
   }) {
     return User(
       id: id ?? this.id,
@@ -87,6 +97,8 @@ class User {
       isAnonymous: isAnonymous ?? this.isAnonymous,
       anonymousName: anonymousName ?? this.anonymousName,
       goals: goals ?? this.goals,
+      streakCount: streakCount ?? this.streakCount,
+      lastLoginDate: lastLoginDate ?? this.lastLoginDate,
     );
   }
 
@@ -103,6 +115,8 @@ class User {
       'isAnonymous': isAnonymous,
       'anonymousName': anonymousName,
       'goals': goals,
+      'streakCount': streakCount,
+      'lastLoginDate': lastLoginDate?.toIso8601String(),
     };
   }
 
@@ -118,6 +132,10 @@ class User {
       isAnonymous: map['isAnonymous'] as bool? ?? false,
       anonymousName: map['anonymousName'] as String?,
       goals: List<String>.from(map['goals'] ?? []),
+      streakCount: map['streakCount'] as int? ?? 0,
+      lastLoginDate: map['lastLoginDate'] != null
+          ? DateTime.parse(map['lastLoginDate'] as String)
+          : null,
     );
   }
 
@@ -134,6 +152,9 @@ class User {
       'isAnonymous': isAnonymous,
       'anonymousName': anonymousName,
       'goals': goals,
+      'streakCount': streakCount,
+      'lastLoginDate':
+          lastLoginDate != null ? Timestamp.fromDate(lastLoginDate!) : null,
     };
   }
 
@@ -151,6 +172,10 @@ class User {
       isAnonymous: data['isAnonymous'] as bool? ?? false,
       anonymousName: data['anonymousName'] as String?,
       goals: List<String>.from(data['goals'] ?? []),
+      streakCount: data['streakCount'] as int? ?? 0,
+      lastLoginDate: data['lastLoginDate'] != null
+          ? (data['lastLoginDate'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -166,6 +191,10 @@ class User {
       isAnonymous: data['isAnonymous'] as bool? ?? false,
       anonymousName: data['anonymousName'] as String?,
       goals: List<String>.from(data['goals'] ?? []),
+      streakCount: data['streakCount'] as int? ?? 0,
+      lastLoginDate: data['lastLoginDate'] != null
+          ? (data['lastLoginDate'] as Timestamp).toDate()
+          : null,
     );
   }
 

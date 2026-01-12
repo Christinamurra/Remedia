@@ -149,6 +149,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'smoothie-006',
+    isPremium: true,
     title: 'Green Machine Energy',
     imageUrl: 'https://images.unsplash.com/photo-1597326510052-7c8a0f253b86?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -176,6 +177,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'smoothie-007',
+    isPremium: true,
     title: 'Wild Blueberry Brain Boost',
     imageUrl: 'https://images.unsplash.com/photo-1502741224143-90386d7f8c82?w=400',
     tags: ['Raw', 'Anti-Inflammatory', 'Quick'],
@@ -204,6 +206,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'smoothie-008',
+    isPremium: true,
     title: 'Mango Turmeric Anti-Inflammatory',
     imageUrl: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400',
     tags: ['Raw', 'Anti-Inflammatory', 'Immunity'],
@@ -233,6 +236,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'smoothie-009',
+    isPremium: true,
     title: 'Strawberry Basil Refresher',
     imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -258,6 +262,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'smoothie-010',
+    isPremium: true,
     title: 'Creamy Avocado Green',
     imageUrl: 'https://images.unsplash.com/photo-1638439430466-b2bb7fdc1d67?w=400',
     tags: ['Raw', 'High Protein', 'Low Sugar'],
@@ -340,6 +345,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-003',
+    isPremium: true,
     title: 'Green Goddess Juice',
     imageUrl: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400',
     tags: ['Raw', 'Detox', 'Vegan'],
@@ -369,6 +375,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-004',
+    isPremium: true,
     title: 'Beet Blood Builder',
     imageUrl: 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4?w=400',
     tags: ['Raw', 'Detox', 'Anti-Inflammatory'],
@@ -395,6 +402,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-005',
+    isPremium: true,
     title: 'Watermelon Mint Cooler',
     imageUrl: 'https://images.unsplash.com/photo-1564509837625-82ca67f56e09?w=400',
     tags: ['Raw', 'Quick', 'Kid Friendly'],
@@ -419,6 +427,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-006',
+    isPremium: true,
     title: 'Pineapple Turmeric Healer',
     imageUrl: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=400',
     tags: ['Raw', 'Anti-Inflammatory', 'Immunity'],
@@ -445,6 +454,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-007',
+    isPremium: true,
     title: 'Apple Fennel Digestive',
     imageUrl: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400',
     tags: ['Raw', 'Gut Healing', 'Low Sugar'],
@@ -471,6 +481,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'juice-008',
+    isPremium: true,
     title: 'Cilantro Detox Elixir',
     imageUrl: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400',
     tags: ['Raw', 'Detox', 'Gut Healing'],
@@ -556,6 +567,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'shot-003',
+    isPremium: true,
     title: 'Apple Cider Vinegar Morning Shot',
     imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
     tags: ['Raw', 'Gut Healing', 'Quick'],
@@ -581,6 +593,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'shot-004',
+    isPremium: true,
     title: 'Ginger Digestion Shot',
     imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400',
     tags: ['Raw', 'Gut Healing', 'Anti-Inflammatory'],
@@ -606,6 +619,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'shot-005',
+    isPremium: true,
     title: 'Green Chlorophyll Shot',
     imageUrl: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=400',
     tags: ['Raw', 'Detox', 'Quick'],
@@ -694,6 +708,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'bowl-003',
+    isPremium: true,
     title: 'Savory Buddha Bowl',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Vegan', 'Low Sugar', 'High Protein'],
@@ -727,6 +742,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'bowl-004',
+    isPremium: true,
     title: 'Raw Pad Thai Bowl',
     imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
     tags: ['Raw', 'Vegan', 'Low Sugar'],
@@ -762,6 +778,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'bowl-005',
+    isPremium: true,
     title: 'Mango Coconut Chia Bowl',
     imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400',
     tags: ['Raw', 'Vegan', 'Gut Healing'],
@@ -790,6 +807,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'bowl-006',
+    isPremium: true,
     title: 'Mediterranean Grain Bowl',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Vegan', 'Low Sugar', 'High Protein'],
@@ -822,6 +840,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'bowl-007',
+    isPremium: true,
     title: 'Tropical Green Smoothie Bowl',
     imageUrl: 'https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -923,6 +942,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'salad-003',
+    isPremium: true,
     title: 'Watermelon Feta-less Salad',
     imageUrl: 'https://images.unsplash.com/photo-1564509837625-82ca67f56e09?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -954,6 +974,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'salad-004',
+    isPremium: true,
     title: 'Asian Sesame Crunch Salad',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Raw', 'Vegan', 'Low Sugar'],
@@ -986,6 +1007,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'salad-005',
+    isPremium: true,
     title: 'Autumn Harvest Salad',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Vegan', 'Low Sugar', 'High Protein'],
@@ -1017,6 +1039,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'salad-006',
+    isPremium: true,
     title: 'Simple Green Goddess Salad',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -1047,6 +1070,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'salad-007',
+    isPremium: true,
     title: 'Mexican Street Corn Salad',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
     tags: ['Vegan', 'Low Sugar', 'Quick'],
@@ -1118,6 +1142,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'main-002',
+    isPremium: true,
     title: 'Stuffed Bell Peppers',
     imageUrl: 'https://images.unsplash.com/photo-1596797038530-2c107aa56c70?w=400',
     tags: ['Vegan', 'Low Sugar', 'High Protein'],
@@ -1152,6 +1177,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'main-003',
+    isPremium: true,
     title: 'Cauliflower Rice Stir Fry',
     imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400',
     tags: ['Vegan', 'Low Sugar', 'Quick'],
@@ -1188,6 +1214,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'main-004',
+    isPremium: true,
     title: 'Raw Veggie Sushi Rolls',
     imageUrl: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400',
     tags: ['Raw', 'Vegan', 'Low Sugar'],
@@ -1224,6 +1251,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'main-005',
+    isPremium: true,
     title: 'Spaghetti Squash Primavera',
     imageUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
     tags: ['Vegan', 'Low Sugar', 'Gut Healing'],
@@ -1294,6 +1322,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'soup-002',
+    isPremium: true,
     title: 'Creamy Carrot Ginger Soup',
     imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400',
     tags: ['Vegan', 'Gut Healing', 'Anti-Inflammatory'],
@@ -1327,6 +1356,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'soup-003',
+    isPremium: true,
     title: 'Healing Vegetable Broth',
     imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400',
     tags: ['Vegan', 'Gut Healing', 'Detox'],
@@ -1398,6 +1428,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'snack-002',
+    isPremium: true,
     title: 'Veggie Sticks with Hummus',
     imageUrl: 'https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?w=400',
     tags: ['Raw', 'Vegan', 'Quick'],
@@ -1430,6 +1461,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'snack-003',
+    isPremium: true,
     title: 'Apple Nachos',
     imageUrl: 'https://images.unsplash.com/photo-1568702846914-96b305d2uj38?w=400',
     tags: ['Raw', 'Vegan', 'Kid Friendly'],
@@ -1488,6 +1520,7 @@ final List<Recipe> recipesData = [
   ),
   const Recipe(
     id: 'dessert-002',
+    isPremium: true,
     title: 'Raw Chocolate Avocado Mousse',
     imageUrl: 'https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?w=400',
     tags: ['Raw', 'Vegan', 'Low Sugar'],
